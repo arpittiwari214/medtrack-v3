@@ -1,0 +1,28 @@
+{
+  "name": "medtrack",
+  "version": "4.0.0",
+  "private": true,
+  "description": "MedTrack — medication adherence platform (API, web, mobile)",
+  "workspaces": [
+    "packages/*",
+    "apps/api",
+    "apps/web",
+    "apps/mobile"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @medtrack/shared",
+    "dev:api": "npm run dev -w @medtrack/api",
+    "dev:web": "npm run dev -w @medtrack/web",
+    "dev:mobile": "npm run start -w @medtrack/mobile",
+    "build": "npm run build:shared && npm run build -w @medtrack/api && npm run build -w @medtrack/web",
+    "test": "npm run test -w @medtrack/shared && npm run test -w @medtrack/api",
+    "typecheck": "npm run typecheck -w @medtrack/mobile && tsc -b packages/shared apps/api",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
