@@ -17,6 +17,25 @@ const booleanish = z
   .enum(['true', 'false', '1', '0'])
   .transform((value) => value === 'true' || value === '1');
 
+/**
+ * Treat a blank value as absent.
+ *
+ * In a `.env` file `FOO=` is the natural way to write "not configured", but Zod
+ * sees the empty string — which is *present* and therefore validated. Without
+ * this, `EMAIL_FROM_ADDRESS=` fails `.email()` and the whole process refuses to
+ * boot, even though email is optional. Applied to every optional string so the
+ * shipped `.env.example`, which leaves the email block blank, works as-is.
+ */
+const optionalString = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().optional(),
+);
+
+const optionalEmail = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().email().optional(),
+);
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -48,16 +67,16 @@ const envSchema = z
     API_PUBLIC_URL: z.string().url().default('http://localhost:5000'),
 
     /* Email — optional. Alerts degrade to in-app only when unset. */
-    SMTP_HOST: z.string().optional(),
+    SMTP_HOST: optionalString,
     SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
     SMTP_SECURE: booleanish.default('false'),
-    SMTP_USER: z.string().optional(),
-    SMTP_PASSWORD: z.string().optional(),
+    SMTP_USER: optionalString,
+    SMTP_PASSWORD: optionalString,
     EMAIL_FROM_NAME: z.string().default('MedTrack'),
-    EMAIL_FROM_ADDRESS: z.string().email().optional(),
+    EMAIL_FROM_ADDRESS: optionalEmail,
 
     /** Expo access token. Only needed for push to devices with restricted tokens. */
-    EXPO_ACCESS_TOKEN: z.string().optional(),
+    EXPO_ACCESS_TOKEN: optionalString,
 
     /** How long after a dose is due before it counts as missed, unless overridden per medicine. */
     DEFAULT_MISSED_GRACE_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
