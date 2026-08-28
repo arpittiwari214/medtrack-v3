@@ -1,17 +1,25 @@
 /**
  * Adherence insight.
  *
- * The tone here is deliberate. Adherence dashboards easily become a scolding
- * device — one big percentage that only ever falls, which is discouraging
- * exactly when someone is already struggling. So the headline is the streak and
- * the pattern, the chart distinguishes "no data" from "zero", and the insight
- * text describes rather than admonishes.
+ * The tone is deliberate. Adherence dashboards easily become a scolding device —
+ * one big percentage that only ever falls, which is discouraging exactly when
+ * someone is already struggling.
+ *
+ * The chart is a **single series**, so it gets a single hue. An earlier version
+ * coloured each bar green/amber/red by its own value, which spends the reserved
+ * status palette on a continuum and makes an ordinary week look like an alarm
+ * panel. Status colour now appears once, on the headline figure, where it is
+ * paired with a word so the colour is never the only signal.
+ *
+ * A day with no scheduled doses renders as a hollow tick rather than a zero-height
+ * bar, because "nothing was due" and "you took none of them" are different facts.
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { formatLocalDate, type DailyAdherencePoint } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { dosesApi, type AnalyticsResponse } from '../api/endpoints.js';
-import { EmptyState, ErrorBanner, PageHeader, Spinner, Stat } from '../components/ui.js';
+import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/ui.js';
 
 const RANGES = [
   { days: 7, label: '7 days' },
@@ -19,10 +27,11 @@ const RANGES = [
   { days: 90, label: '90 days' },
 ];
 
-function rateColor(rate: number): string {
-  if (rate >= 80) return 'var(--ok)';
-  if (rate >= 50) return 'var(--warn)';
-  return 'var(--danger)';
+/** Status band for a rate. Always rendered with its label, never colour alone. */
+function band(rate: number): { tone: string; label: string; badge: string } {
+  if (rate >= 80) return { tone: 'var(--ok)', label: 'On track', badge: 'badge-ok' };
+  if (rate >= 50) return { tone: 'var(--warn)', label: 'Slipping', badge: 'badge-warn' };
+  return { tone: 'var(--danger)', label: 'Needs attention', badge: 'badge-danger' };
 }
 
 export default function Analytics() {
@@ -51,11 +60,13 @@ export default function Analytics() {
   if (error && !data) return <ErrorBanner message={error} onRetry={() => load(days)} />;
   if (!data) return null;
 
-  const hasData = data.summary.taken + data.summary.missed > 0;
+  const resolved = data.summary.taken + data.summary.missed;
+  const hasData = resolved > 0;
+  const status = band(data.summary.ratePercent);
 
   return (
     <div className="stack">
-      <PageHeader title="Insights" subtitle={`Last ${days} days`} />
+      <PageHeader title="Insights" subtitle={`Your last ${days} days`} />
 
       <div className="row" role="group" aria-label="Time range">
         {RANGES.map((range) => (
@@ -79,15 +90,28 @@ export default function Analytics() {
         />
       ) : (
         <>
-          <div className="row" style={{ gap: 'var(--s3)' }}>
-            <div className="stat" style={{ flex: 1 }}>
-              <div className="stat-value" style={{ color: rateColor(data.summary.ratePercent) }}>
-                {data.summary.ratePercent}%
-              </div>
-              <div className="stat-label">Doses taken</div>
+          {/* The one number the screen leads with. Exactly one hero per view. */}
+          <section className="card">
+            <p className="eyebrow">Doses taken</p>
+            <div className="row" style={{ alignItems: 'baseline', gap: 'var(--s2)' }}>
+              <span className="hero-figure">{data.summary.ratePercent}</span>
+              <span className="hero-unit">%</span>
+              <span className={`badge ${status.badge}`} style={{ marginLeft: 'auto' }}>
+                {status.label}
+              </span>
             </div>
-            <Stat value={data.summary.streakDays} label="Day streak" />
-            <Stat value={data.summary.missed} label="Missed" />
+            <p className="muted" style={{ marginTop: 'var(--s2)', fontSize: '0.9375rem' }}>
+              {data.summary.taken} of {resolved} doses, over {days} days.
+              {data.summary.streakDays > 0 && (
+                <> Currently on a {data.summary.streakDays}-day streak.</>
+              )}
+            </p>
+          </section>
+
+          <div className="row" style={{ gap: 'var(--s3)' }}>
+            <Tile value={data.summary.streakDays} label="Day streak" />
+            <Tile value={data.summary.missed} label="Missed" />
+            <Tile value={data.summary.skipped} label="Skipped" />
           </div>
 
           {data.insights.length > 0 && (
@@ -102,70 +126,39 @@ export default function Analytics() {
             </section>
           )}
 
-          <section className="card">
-            <div className="card-header">
-              <h2 style={{ fontSize: '1.0625rem' }}>Day by day</h2>
-            </div>
-            <div className="chart" role="img" aria-label={describeChart(data)}>
-              {data.daily.map((point) => (
-                <div key={point.localDate} className="chart-col" title={`${point.localDate}: ${point.ratePercent ?? 'no doses'}`}>
-                  {point.ratePercent === null ? (
-                    <div className="chart-bar chart-bar-empty" />
-                  ) : (
-                    <div
-                      className="chart-bar"
-                      style={{
-                        height: `${Math.max(point.ratePercent, 3)}%`,
-                        background: rateColor(point.ratePercent),
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="row-between subtle" style={{ marginTop: 'var(--s2)' }}>
-              <span>{data.window.from}</span>
-              <span>{data.window.to}</span>
-            </div>
-            <p className="subtle" style={{ marginTop: 'var(--s3)' }}>
-              A hatched tick means no doses were scheduled that day — not that you missed them.
-            </p>
-          </section>
+          <AdherenceChart daily={data.daily} from={data.window.from} to={data.window.to} />
 
           <section className="card">
             <div className="card-header">
               <h2 style={{ fontSize: '1.0625rem' }}>By medicine</h2>
             </div>
-            <div className="stack" style={{ gap: 'var(--s3)' }}>
-              {data.perMedicine.map((medicine) => (
-                <div key={medicine.medicineId}>
-                  <div className="row-between" style={{ marginBottom: 'var(--s1)' }}>
-                    <span style={{ fontWeight: 600 }}>{medicine.medicineName}</span>
-                    <span className="numeric" style={{ color: rateColor(medicine.ratePercent), fontWeight: 700 }}>
-                      {medicine.ratePercent}%
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      height: 8,
-                      background: 'var(--surface-2)',
-                      borderRadius: 'var(--r-full)',
-                      overflow: 'hidden',
-                    }}
-                  >
+            <div className="stack" style={{ gap: 'var(--s4)' }}>
+              {data.perMedicine.map((medicine) => {
+                const level = band(medicine.ratePercent);
+                return (
+                  <div key={medicine.medicineId}>
+                    <div className="row-between" style={{ marginBottom: 'var(--s2)' }}>
+                      <span style={{ fontWeight: 600 }}>{medicine.medicineName}</span>
+                      <span className="row" style={{ gap: 'var(--s2)' }}>
+                        <span className={`badge ${level.badge}`}>{level.label}</span>
+                        <span className="numeric" style={{ fontWeight: 650 }}>
+                          {medicine.ratePercent}%
+                        </span>
+                      </span>
+                    </div>
                     <div
-                      style={{
-                        width: `${medicine.ratePercent}%`,
-                        height: '100%',
-                        background: rateColor(medicine.ratePercent),
-                      }}
-                    />
+                      className="meter"
+                      role="img"
+                      aria-label={`${medicine.medicineName}: ${medicine.ratePercent}% taken, ${medicine.missed} missed of ${medicine.taken + medicine.missed}`}
+                    >
+                      <div className="meter-fill" style={{ width: `${medicine.ratePercent}%` }} />
+                    </div>
+                    <p className="subtle" style={{ marginTop: 'var(--s1)' }}>
+                      {medicine.taken} taken · {medicine.missed} missed
+                    </p>
                   </div>
-                  <p className="subtle" style={{ marginTop: 2 }}>
-                    {medicine.taken} taken · {medicine.missed} missed
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </>
@@ -174,12 +167,83 @@ export default function Analytics() {
   );
 }
 
-/** A text description of the chart, so it is not invisible to a screen reader. */
-function describeChart(data: AnalyticsResponse): string {
-  const withData = data.daily.filter((point) => point.ratePercent !== null);
-  if (withData.length === 0) return 'No dose data in this period.';
-  const average = Math.round(
-    withData.reduce((sum, point) => sum + (point.ratePercent ?? 0), 0) / withData.length,
+function Tile({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="stat" style={{ flex: 1 }}>
+      <div className="stat-value">{value}</div>
+      <div className="stat-label">{label}</div>
+    </div>
   );
-  return `Daily adherence from ${data.window.from} to ${data.window.to}, averaging ${average}% across ${withData.length} days with scheduled doses.`;
+}
+
+/**
+ * Daily adherence, one column per day.
+ *
+ * Single series, so there is no legend — the heading already says what is
+ * plotted, and a one-swatch legend box would just restate it.
+ */
+function AdherenceChart({
+  daily,
+  from,
+  to,
+}: {
+  daily: DailyAdherencePoint[];
+  from: string;
+  to: string;
+}) {
+  const withData = daily.filter((point) => point.ratePercent !== null);
+  const average =
+    withData.length > 0
+      ? Math.round(
+          withData.reduce((sum, point) => sum + (point.ratePercent ?? 0), 0) / withData.length,
+        )
+      : 0;
+
+  return (
+    <section className="card">
+      <div className="card-header">
+        <h2 style={{ fontSize: '1.0625rem' }}>Day by day</h2>
+        <span className="subtle numeric">{average}% average</span>
+      </div>
+
+      <div
+        className="chart"
+        role="img"
+        aria-label={`Daily adherence from ${from} to ${to}, averaging ${average}% across ${withData.length} days with scheduled doses.`}
+      >
+        {/* Recessive hairline gridlines at 50% and 100%. */}
+        <div className="chart-grid" aria-hidden="true">
+          <div className="chart-gridline" style={{ top: 0 }} />
+          <div className="chart-gridline" style={{ top: '50%' }} />
+        </div>
+
+        {daily.map((point) => (
+          <div key={point.localDate} className="chart-col" tabIndex={-1}>
+            <span className="chart-tip">
+              {point.ratePercent === null
+                ? `${formatLocalDate(point.localDate)} · none due`
+                : `${formatLocalDate(point.localDate)} · ${point.ratePercent}%`}
+            </span>
+            {point.ratePercent === null ? (
+              <div className="chart-bar-empty" />
+            ) : (
+              <div
+                className="chart-bar"
+                style={{ height: `${Math.max(point.ratePercent, 2)}%` }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="chart-axis">
+        <span>{formatLocalDate(from)}</span>
+        <span>{formatLocalDate(to)}</span>
+      </div>
+
+      <p className="subtle" style={{ marginTop: 'var(--s3)' }}>
+        A flat tick marks a day with no doses scheduled — not a day you missed.
+      </p>
+    </section>
+  );
 }

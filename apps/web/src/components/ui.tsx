@@ -61,8 +61,8 @@ export function EmptyState({
       <div className="empty-icon" aria-hidden="true">
         {icon}
       </div>
-      <h3 style={{ marginBottom: 'var(--s2)' }}>{title}</h3>
-      <p className="muted" style={{ marginBottom: 'var(--s4)' }}>
+      <h3 style={{ marginBottom: 'var(--s2)', fontSize: '1.125rem' }}>{title}</h3>
+      <p className="muted" style={{ marginBottom: 'var(--s5)', maxWidth: '42ch', marginInline: 'auto' }}>
         {description}
       </p>
       {action}

@@ -1,59 +1,89 @@
 /* ==========================================================================
    MedTrack design system.
 
-   Built around one constraint that shapes everything else: a good share of the
-   people using this are managing several medications, which correlates with
-   being older, tired, or unwell. So the defaults lean large — 16px base body
-   text, 44px minimum touch targets, generous line height — and colour is never
-   the only carrier of meaning. Every status that is shown in colour also
-   carries a label or an icon, because red/green is exactly the pair that
-   ~8% of men cannot reliably distinguish.
+   Two constraints shape everything, and they pull in the same direction.
+
+   1. A good share of the people using this are managing several medications,
+      which correlates with being older, tired, or unwell. So defaults lean
+      large: 16px base body text, 44px minimum touch targets, generous line
+      height, and real hierarchy rather than five shades of grey text.
+
+   2. It is a medical tool, so it should feel calm and certain rather than
+      urgent. Colour is spent sparingly and deliberately: one brand hue carries
+      identity and data, and the status colours are reserved for actual status.
+      A screen where everything is coloured has no way to say "look here".
+
+   Colour is never the only carrier of meaning — every status also carries a
+   word and a glyph, because red/green is precisely the pair a meaningful share
+   of people cannot distinguish, and this app uses it to mean "taken" versus
+   "missed".
+
+   The chart palette was validated computationally rather than by eye
+   (OKLab lightness band, chroma floor, CVD separation, contrast). The brand
+   teal is the single data hue; status colours never act as a series.
    ========================================================================== */
 
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Brand */
-  --navy: #1b2b4b;
-  --navy-600: #2a3f68;
-  --navy-100: #e8ecf4;
+  /* Brand. Validated: chroma 0.10+, contrast >= 3:1 on the light surface. */
+  --brand: #0891a8;
+  --brand-strong: #06758a;
+  --brand-soft: #e2f3f7;
+  --brand-ink: #05505f;
 
-  /* Surfaces */
-  --bg: #f6f8fb;
+  /* Surfaces. Warm neutral rather than cold blue-grey — it reads human rather
+     than institutional, which matters for something you open every morning. */
+  --bg: #fbfaf8;
   --surface: #ffffff;
-  --surface-2: #f1f5f9;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
+  --surface-2: #f4f3f0;
+  --surface-3: #ebe9e5;
+  --border: #e6e3de;
+  --border-strong: #d3cfc8;
 
-  /* Text */
-  --text: #0f1b33;
-  --text-muted: #5a6b85;
-  --text-subtle: #8494a8;
-  --text-inverse: #ffffff;
+  /* Ink */
+  --text: #12181b;
+  --text-2: #55636b;
+  /* 4.6:1 on the white surface. The obvious lighter grey (#8a9299) measures
+     3.16 and fails AA for 14px text — and this token carries the smallest type
+     in the app, which is exactly where it matters most. */
+  --text-3: #6b7379;
+  --on-brand: #ffffff;
 
-  /* Status. Each is paired with a tinted background for badges. */
-  --ok: #12805c;
-  --ok-bg: #e3f5ee;
-  --warn: #a1620a;
-  --warn-bg: #fdf1dd;
-  --danger: #c0392f;
-  --danger-bg: #fdeceb;
-  --info: #2563a8;
-  --info-bg: #e6f0fa;
+  /* Status — reserved. Never reused as a series colour. Always with a label. */
+  --ok: #0ca30c;
+  --ok-bg: #e6f6e6;
+  --ok-ink: #05620a;
+  --warn: #b8730a;
+  --warn-bg: #fdf2dd;
+  --warn-ink: #7a4a03;
+  --danger: #d03b3b;
+  --danger-bg: #fbeaea;
+  --danger-ink: #8c2020;
+  --info: #2a78d6;
+  --info-bg: #e7f0fc;
+  --info-ink: #14477f;
 
-  /* Shape */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 24px;
+  /* Chart chrome */
+  --grid: #eceae6;
+  --axis: #d3cfc8;
+
+  /* Shape — larger radii read calmer and more current than 4–8px corners. */
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
   --r-full: 999px;
 
-  /* Elevation — deliberately soft; this is a calm app, not a dashboard. */
-  --shadow-sm: 0 1px 2px rgb(15 27 51 / 6%);
-  --shadow-md: 0 4px 16px rgb(15 27 51 / 8%);
-  --shadow-lg: 0 12px 32px rgb(15 27 51 / 12%);
+  /* Elevation. Layered and very soft: one tight contact shadow plus one wide
+     ambient. A single hard shadow is what makes an interface look dated. */
+  --shadow-xs: 0 1px 2px rgb(18 24 27 / 5%);
+  --shadow-sm: 0 1px 2px rgb(18 24 27 / 5%), 0 2px 8px rgb(18 24 27 / 4%);
+  --shadow-md: 0 1px 3px rgb(18 24 27 / 6%), 0 8px 24px rgb(18 24 27 / 6%);
+  --shadow-lg: 0 2px 6px rgb(18 24 27 / 8%), 0 20px 48px rgb(18 24 27 / 10%);
 
-  /* Spacing scale */
+  /* Spacing */
   --s1: 4px;
   --s2: 8px;
   --s3: 12px;
@@ -61,42 +91,56 @@
   --s5: 24px;
   --s6: 32px;
   --s7: 48px;
-  --s8: 64px;
+  --s8: 72px;
 
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --content-width: 1080px;
-  --app-width: 560px;
+  --content-width: 1120px;
+  --app-width: 600px;
 
   color-scheme: light;
 }
 
-/* Dark mode. Only tokens are redefined, so nothing downstream has to know. */
+/* Dark mode is selected, not flipped: the brand step is re-chosen for the dark
+   surface and validated against it, rather than being the light hue lightened. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0d1420;
-    --surface: #151f30;
-    --surface-2: #1c2839;
-    --border: #27344a;
-    --border-strong: #3a4a66;
+    --brand: #22a6c0;
+    --brand-strong: #3dbcd4;
+    --brand-soft: #10323b;
+    --brand-ink: #8fd8e6;
 
-    --text: #eef2f8;
-    --text-muted: #9fb0c7;
-    --text-subtle: #7386a0;
+    --bg: #101619;
+    --surface: #171f23;
+    --surface-2: #1e282d;
+    --surface-3: #263238;
+    --border: #263238;
+    --border-strong: #384750;
 
-    --navy-100: #1e2c46;
+    --text: #f2f5f6;
+    --text-2: #a7b4bb;
+    --text-3: #7a878e;
+    --on-brand: #06222a;
 
-    --ok: #4ecf9f;
-    --ok-bg: #102f26;
-    --warn: #e0a944;
+    --ok: #3cc23c;
+    --ok-bg: #102c12;
+    --ok-ink: #8fe08f;
+    --warn: #e8a838;
     --warn-bg: #33260f;
-    --danger: #f08379;
-    --danger-bg: #331917;
-    --info: #7db4ec;
-    --info-bg: #12263c;
+    --warn-ink: #f5cf88;
+    --danger: #ef6b6b;
+    --danger-bg: #331919;
+    --danger-ink: #f8a9a9;
+    --info: #6aa5ea;
+    --info-bg: #12253c;
+    --info-ink: #a9caf3;
 
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
-    --shadow-md: 0 4px 16px rgb(0 0 0 / 45%);
-    --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+    --grid: #232f35;
+    --axis: #384750;
+
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 45%), 0 2px 8px rgb(0 0 0 / 30%);
+    --shadow-md: 0 1px 3px rgb(0 0 0 / 50%), 0 8px 24px rgb(0 0 0 / 40%);
+    --shadow-lg: 0 2px 6px rgb(0 0 0 / 55%), 0 20px 48px rgb(0 0 0 / 50%);
 
     color-scheme: dark;
   }
@@ -125,6 +169,7 @@ body {
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   min-height: 100dvh;
 }
 
@@ -146,26 +191,35 @@ h1,
 h2,
 h3,
 h4 {
-  line-height: 1.25;
-  letter-spacing: -0.015em;
-  font-weight: 700;
+  line-height: 1.2;
+  font-weight: 650;
+  /* Optical correction: large text needs negative tracking to look right. */
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 a {
-  color: var(--info);
+  color: var(--brand-ink);
   text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
 }
 
-/* A visible focus ring everywhere. Removing it is a common and bad habit; for
-   an app used by people who may rely on keyboard navigation it is essential. */
+a:hover {
+  color: var(--brand);
+}
+
+/* A visible focus ring everywhere. Removing it is a common and bad habit; in an
+   app used by people who may rely on keyboard navigation it is essential. */
 :focus-visible {
-  outline: 3px solid var(--info);
+  outline: 2.5px solid var(--brand);
   outline-offset: 2px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-xs);
 }
 
-/* Honour a reduced-motion preference rather than animating regardless. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -183,15 +237,14 @@ a {
   width: 100%;
   max-width: var(--content-width);
   margin-inline: auto;
-  padding-inline: var(--s4);
+  padding-inline: var(--s5);
 }
 
 .app-shell {
   max-width: var(--app-width);
   margin-inline: auto;
   min-height: 100dvh;
-  background: var(--bg);
-  padding-bottom: 88px;
+  padding-bottom: 96px;
 }
 
 .stack {
@@ -215,37 +268,46 @@ a {
 
 .grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--s4);
 }
 
 .grid-3 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--s4);
 }
 
-/* ── Typography helpers ─────────────────────────────────────────────────── */
+/* ── Typography ─────────────────────────────────────────────────────────── */
 
 .muted {
-  color: var(--text-muted);
+  color: var(--text-2);
 }
+
 .subtle {
-  color: var(--text-subtle);
+  color: var(--text-3);
   font-size: 0.875rem;
+  line-height: 1.5;
 }
+
 .eyebrow {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-subtle);
+  color: var(--text-3);
 }
+
 .lede {
-  font-size: 1.125rem;
-  color: var(--text-muted);
-  line-height: 1.65;
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  color: var(--text-2);
+  letter-spacing: -0.01em;
 }
+
+/* Reserved for columns that must align vertically. Large standalone numbers use
+   proportional figures — tabular makes a value like 121 look loose at display
+   sizes, because every digit gets the width of a zero. */
 .numeric {
   font-variant-numeric: tabular-nums;
 }
@@ -264,6 +326,11 @@ a {
   padding: var(--s4);
 }
 
+.card-flush {
+  padding: 0;
+  overflow: hidden;
+}
+
 .card-header {
   display: flex;
   align-items: center;
@@ -279,16 +346,22 @@ a {
   align-items: center;
   justify-content: center;
   gap: var(--s2);
-  /* 44px min height: the smallest reliably tappable target. */
+  /* 44px is the smallest reliably tappable target. */
   min-height: 44px;
   padding: 0 var(--s5);
   border: 1px solid transparent;
   border-radius: var(--r-md);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
+  letter-spacing: -0.005em;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.08s ease;
 }
 
 .btn:active:not(:disabled) {
@@ -296,16 +369,19 @@ a {
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .btn-primary {
-  background: var(--navy);
-  color: var(--text-inverse);
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: var(--shadow-xs);
 }
+
 .btn-primary:hover:not(:disabled) {
-  background: var(--navy-600);
+  background: var(--brand-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary {
@@ -313,15 +389,18 @@ a {
   border-color: var(--border-strong);
   color: var(--text);
 }
+
 .btn-secondary:hover:not(:disabled) {
   background: var(--surface-2);
+  border-color: var(--text-3);
 }
 
 .btn-ghost {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-2);
   padding-inline: var(--s3);
 }
+
 .btn-ghost:hover:not(:disabled) {
   background: var(--surface-2);
   color: var(--text);
@@ -348,16 +427,21 @@ a {
   width: 100%;
 }
 
+/* Still 44px tall — "small" here means visually lighter (smaller type, tighter
+   padding), not a smaller hit area. Shrinking the target is the usual way this
+   rule gets quietly broken, and this audience is the least able to absorb it. */
 .btn-sm {
-  min-height: 36px;
-  padding: 0 var(--s3);
+  min-height: 44px;
+  padding: 0 var(--s4);
   font-size: 0.875rem;
+  border-radius: var(--r-sm);
 }
 
 .btn-lg {
-  min-height: 52px;
+  min-height: 54px;
   font-size: 1.0625rem;
   padding-inline: var(--s6);
+  border-radius: var(--r-md);
 }
 
 /* ── Forms ──────────────────────────────────────────────────────────────── */
@@ -371,46 +455,62 @@ a {
 .label {
   font-size: 0.9375rem;
   font-weight: 600;
+  letter-spacing: -0.005em;
 }
 
 .input,
 .select,
 .textarea {
   width: 100%;
-  min-height: 46px;
+  min-height: 48px;
   padding: var(--s3) var(--s4);
   background: var(--surface);
   border: 1.5px solid var(--border-strong);
   border-radius: var(--r-md);
   font-size: 1rem;
+  color: var(--text);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .textarea {
-  min-height: 96px;
+  min-height: 104px;
   resize: vertical;
+  line-height: 1.6;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-3);
 }
 
 .input:focus,
 .select:focus,
 .textarea:focus {
-  border-color: var(--info);
+  border-color: var(--brand);
   outline: none;
-  box-shadow: 0 0 0 3px var(--info-bg);
+  box-shadow: 0 0 0 4px var(--brand-soft);
 }
 
 .input[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
+.input[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 4px var(--danger-bg);
+}
+
 .field-error {
   font-size: 0.875rem;
-  color: var(--danger);
+  color: var(--danger-ink);
   font-weight: 500;
 }
 
 .field-hint {
   font-size: 0.875rem;
-  color: var(--text-muted);
+  color: var(--text-2);
+  line-height: 1.5;
 }
 
 .checkbox-row {
@@ -420,6 +520,7 @@ a {
   padding: var(--s3);
   border-radius: var(--r-md);
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .checkbox-row:hover {
@@ -429,46 +530,56 @@ a {
 .checkbox-row input {
   width: 20px;
   height: 20px;
-  margin-top: 2px;
+  margin-top: 3px;
   flex-shrink: 0;
-  accent-color: var(--navy);
+  accent-color: var(--brand);
 }
 
-/* ── Badges & pills ─────────────────────────────────────────────────────── */
+/* ── Badges ─────────────────────────────────────────────────────────────── */
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: var(--s1);
-  padding: 3px var(--s3);
+  padding: 3px 10px;
   border-radius: var(--r-full);
   font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: -0.005em;
   white-space: nowrap;
 }
 
 .badge-ok {
   background: var(--ok-bg);
-  color: var(--ok);
-}
-.badge-warn {
-  background: var(--warn-bg);
-  color: var(--warn);
-}
-.badge-danger {
-  background: var(--danger-bg);
-  color: var(--danger);
-}
-.badge-info {
-  background: var(--info-bg);
-  color: var(--info);
-}
-.badge-neutral {
-  background: var(--surface-2);
-  color: var(--text-muted);
+  color: var(--ok-ink);
 }
 
-/* ── Alert banners ──────────────────────────────────────────────────────── */
+.badge-warn {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.badge-danger {
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+
+.badge-info {
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.badge-neutral {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.badge-brand {
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+
+/* ── Alerts ─────────────────────────────────────────────────────────────── */
 
 .alert {
   display: flex;
@@ -477,27 +588,35 @@ a {
   border-radius: var(--r-md);
   border: 1px solid transparent;
   font-size: 0.9375rem;
+  line-height: 1.55;
 }
 
 .alert-error {
   background: var(--danger-bg);
-  border-color: var(--danger);
-  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  color: var(--danger-ink);
 }
+
 .alert-warn {
   background: var(--warn-bg);
-  border-color: var(--warn);
-  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+  color: var(--warn-ink);
 }
+
 .alert-ok {
   background: var(--ok-bg);
-  border-color: var(--ok);
-  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent);
+  color: var(--ok-ink);
 }
+
 .alert-info {
   background: var(--info-bg);
-  border-color: var(--info);
-  color: var(--info);
+  border-color: color-mix(in srgb, var(--info) 30%, transparent);
+  color: var(--info-ink);
+}
+
+.alert strong {
+  font-weight: 650;
 }
 
 /* ── Dose list ──────────────────────────────────────────────────────────── */
@@ -510,28 +629,46 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
+  transition: box-shadow 0.15s ease;
 }
 
-/* A coloured left edge for scanning, always paired with a text status so
-   colour is never the only signal. */
-.dose-taken {
-  border-left: 4px solid var(--ok);
+.dose:hover {
+  box-shadow: var(--shadow-sm);
 }
-.dose-missed {
-  border-left: 4px solid var(--danger);
+
+/* A status rail for scanning. Always paired with a badge carrying a word, so
+   the colour is a second channel rather than the only one. */
+.dose::before {
+  content: '';
+  align-self: stretch;
+  width: 3px;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
+  flex-shrink: 0;
 }
-.dose-snoozed {
-  border-left: 4px solid var(--warn);
+
+.dose-taken::before {
+  background: var(--ok);
 }
-.dose-scheduled {
-  border-left: 4px solid var(--border-strong);
+.dose-missed::before {
+  background: var(--danger);
+}
+.dose-snoozed::before {
+  background: var(--warn);
+}
+.dose-scheduled::before {
+  background: var(--brand);
+}
+.dose-skipped::before {
+  background: var(--border-strong);
 }
 
 .dose-time {
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
-  min-width: 76px;
+  min-width: 72px;
   font-size: 0.9375rem;
+  color: var(--text-2);
 }
 
 .dose-body {
@@ -541,68 +678,168 @@ a {
 
 .dose-name {
   font-weight: 600;
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* ── Stats ──────────────────────────────────────────────────────────────── */
+/* ── Stat tiles ─────────────────────────────────────────────────────────── */
 
 .stat {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: var(--s4);
-  text-align: center;
+  box-shadow: var(--shadow-xs);
 }
 
 .stat-value {
   font-size: 1.75rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  font-weight: 650;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .stat-label {
   font-size: 0.8125rem;
-  color: var(--text-muted);
+  color: var(--text-2);
   margin-top: var(--s1);
 }
 
-/* ── Bar chart ──────────────────────────────────────────────────────────── */
+/* The one number a screen leads with. Exactly one per view. */
+.hero-figure {
+  font-size: 3.25rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+
+.hero-unit {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: -0.01em;
+}
+
+/* ── Chart ──────────────────────────────────────────────────────────────── */
 
 .chart {
+  position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 3px;
-  height: 140px;
-  padding-top: var(--s3);
+  /* The 2px surface gap that separates adjacent bars. White does the
+     separating; a stroke around each bar would add ink that isn't data. */
+  gap: 2px;
+  height: 148px;
+  padding-top: var(--s4);
+}
+
+.chart-grid {
+  position: absolute;
+  inset: var(--s4) 0 0;
+  pointer-events: none;
+}
+
+/* Hairline, solid, recessive. Never dashed. */
+.chart-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--grid);
 }
 
 .chart-col {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   height: 100%;
   min-width: 0;
+  /* Cap the mark and let the leftover band be air. */
+  max-width: 24px;
+  margin-inline: auto;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: default;
 }
 
+/* Single hue: this is one series, so colour carries no extra meaning. Colouring
+   each bar by its own value would spend the status palette on a continuum and
+   make an ordinary week look like an alarm panel. */
 .chart-bar {
-  border-radius: 3px 3px 0 0;
+  background: var(--brand);
+  /* Rounded at the data end, square at the baseline. */
+  border-radius: 4px 4px 0 0;
   min-height: 3px;
-  transition: height 0.2s ease;
+  width: 100%;
+  transition: opacity 0.12s ease;
 }
 
-/* A day with no data is a gap, not a zero — rendered as a hollow tick so the
-   two are visually distinct. */
+.chart-col:hover .chart-bar {
+  opacity: 0.75;
+}
+
+/* A day with no scheduled doses is a gap, not a zero. Rendered as a hollow tick
+   so the two are never confused. */
 .chart-bar-empty {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--border) 0 2px,
-    transparent 2px 4px
-  );
-  height: 4px;
+  height: 3px;
+  width: 100%;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
+}
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--s2);
+  font-size: 0.75rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hover tooltip — an HTML chart is interactive, so it ships with one. */
+.chart-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 5px 9px;
+  border-radius: var(--r-xs);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 5;
+  box-shadow: var(--shadow-md);
+}
+
+.chart-col:hover .chart-tip,
+.chart-col:focus-visible .chart-tip {
+  opacity: 1;
+}
+
+/* Meter: the unfilled track is a lighter step of the same ramp, so the state
+   reads across the whole bar rather than only where it is filled. */
+.meter {
+  height: 8px;
+  background: var(--surface-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--brand);
 }
 
 /* ── Bottom navigation ──────────────────────────────────────────────────── */
@@ -615,7 +852,8 @@ a {
   width: 100%;
   max-width: var(--app-width);
   display: flex;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom, 0);
   z-index: 50;
@@ -626,53 +864,51 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: var(--s3) var(--s1);
-  min-height: 56px;
+  gap: 3px;
+  padding: var(--s3) var(--s1) var(--s2);
+  min-height: 58px;
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-subtle);
+  color: var(--text-3);
   font-size: 0.6875rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 .nav-item[aria-current='page'] {
-  color: var(--navy);
-  font-weight: 700;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .nav-item[aria-current='page'] {
-    color: var(--info);
-  }
+  color: var(--brand);
 }
 
 .nav-icon {
+  position: relative;
   font-size: 1.25rem;
   line-height: 1;
 }
 
 .nav-badge {
   position: absolute;
-  transform: translate(14px, -4px);
+  top: -5px;
+  right: -9px;
   background: var(--danger);
   color: #fff;
   font-size: 0.625rem;
   font-weight: 700;
   border-radius: var(--r-full);
-  padding: 0 5px;
-  min-width: 16px;
+  padding: 1px 5px;
+  min-width: 17px;
   text-align: center;
+  border: 2px solid var(--surface);
 }
 
-/* ── Modal / sheet ──────────────────────────────────────────────────────── */
+/* ── Modal ──────────────────────────────────────────────────────────────── */
 
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgb(9 16 30 / 62%);
+  background: rgb(12 18 21 / 55%);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -689,15 +925,24 @@ a {
 .sheet {
   background: var(--surface);
   border-radius: var(--r-xl);
-  padding: var(--s6) var(--s5);
+  padding: var(--s6) var(--s5) var(--s5);
   width: 100%;
-  max-width: 440px;
+  max-width: 460px;
   box-shadow: var(--shadow-lg);
   max-height: 90dvh;
   overflow-y: auto;
 }
 
-/* ── Marketing page ─────────────────────────────────────────────────────── */
+/* ── Marketing ──────────────────────────────────────────────────────────── */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 40;
+}
 
 .hero {
   padding: var(--s8) 0 var(--s7);
@@ -705,31 +950,52 @@ a {
 }
 
 .hero h1 {
-  font-size: clamp(2rem, 6vw, 3.25rem);
+  font-size: clamp(2.25rem, 6vw, 3.75rem);
+  letter-spacing: -0.035em;
   margin-bottom: var(--s4);
+  max-width: 18ch;
+  margin-inline: auto;
 }
 
-.site-header {
-  position: sticky;
-  top: 0;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border);
-  z-index: 40;
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.feature-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.feature-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: var(--brand-soft);
+  font-size: 1.25rem;
+  margin-bottom: var(--s4);
 }
 
 .site-footer {
   border-top: 1px solid var(--border);
   padding: var(--s6) 0;
   margin-top: var(--s8);
-  color: var(--text-muted);
+  color: var(--text-2);
   font-size: 0.9375rem;
 }
 
 .footer-links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s4);
+  gap: var(--s5);
   list-style: none;
   padding: 0;
 }
@@ -737,19 +1003,19 @@ a {
 /* ── Legal documents ────────────────────────────────────────────────────── */
 
 .doc {
-  max-width: 720px;
+  max-width: 68ch;
   margin-inline: auto;
-  padding: var(--s6) var(--s4) var(--s8);
+  padding: var(--s7) var(--s5) var(--s8);
 }
 
 .doc h1 {
-  font-size: 2rem;
+  font-size: clamp(1.875rem, 4vw, 2.25rem);
   margin-bottom: var(--s2);
 }
 
 .doc h2 {
-  font-size: 1.25rem;
-  margin: var(--s6) 0 var(--s3);
+  font-size: 1.3125rem;
+  margin: var(--s7) 0 var(--s3);
 }
 
 .doc h3 {
@@ -759,8 +1025,9 @@ a {
 
 .doc p,
 .doc li {
-  color: var(--text-muted);
+  color: var(--text-2);
   margin-bottom: var(--s3);
+  line-height: 1.7;
 }
 
 .doc ul,
@@ -771,6 +1038,14 @@ a {
 
 .doc strong {
   color: var(--text);
+  font-weight: 600;
+}
+
+.doc code {
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  font-size: 0.9em;
 }
 
 .doc table {
@@ -794,16 +1069,16 @@ a {
 }
 
 .doc td {
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 
 .doc-meta {
   font-size: 0.875rem;
-  color: var(--text-subtle);
+  color: var(--text-3);
   margin-bottom: var(--s6);
 }
 
-/* Wide content must scroll inside its own box, never the page body. */
+/* Wide content scrolls inside its own box; the page body never scrolls sideways. */
 .scroll-x {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -828,9 +1103,10 @@ a {
   left: -9999px;
   z-index: 999;
   padding: var(--s3) var(--s4);
-  background: var(--navy);
-  color: #fff;
+  background: var(--brand);
+  color: var(--on-brand);
   border-radius: var(--r-md);
+  font-weight: 600;
 }
 
 .skip-link:focus {
@@ -839,10 +1115,10 @@ a {
 }
 
 .spinner {
-  width: 20px;
-  height: 20px;
-  border: 2.5px solid var(--border-strong);
-  border-top-color: var(--navy);
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--surface-3);
+  border-top-color: var(--brand);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -855,11 +1131,17 @@ a {
 
 .empty {
   text-align: center;
-  padding: var(--s7) var(--s4);
-  color: var(--text-muted);
+  padding: var(--s8) var(--s4);
+  color: var(--text-2);
 }
 
 .empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: var(--s3);
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto var(--s4);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  font-size: 1.75rem;
 }

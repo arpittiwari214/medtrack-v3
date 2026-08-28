@@ -82,8 +82,8 @@ export default function Landing() {
         <section className="container" style={{ paddingBottom: 'var(--s8)' }}>
           <div className="grid-3">
             {FEATURES.map((feature) => (
-              <article key={feature.title} className="card">
-                <div style={{ fontSize: '1.75rem', marginBottom: 'var(--s3)' }} aria-hidden="true">
+              <article key={feature.title} className="feature-card">
+                <div className="feature-icon" aria-hidden="true">
                   {feature.icon}
                 </div>
                 <h2 style={{ fontSize: '1.0625rem', marginBottom: 'var(--s2)' }}>{feature.title}</h2>
@@ -98,11 +98,11 @@ export default function Landing() {
         {/* Stated plainly and early rather than buried in the terms. A tool that
             handles medication has to be clear about what it is not. */}
         <section className="container" style={{ paddingBottom: 'var(--s8)' }}>
-          <div className="card" style={{ borderColor: 'var(--warn)', background: 'var(--warn-bg)' }}>
-            <h2 style={{ fontSize: '1.0625rem', marginBottom: 'var(--s2)', color: 'var(--warn)' }}>
+          <div className="alert alert-warn" style={{ display: 'block', padding: 'var(--s5)' }}>
+            <h2 style={{ fontSize: '1.0625rem', marginBottom: 'var(--s2)', color: 'inherit' }}>
               MedTrack is a reminder tool, not a medical device
             </h2>
-            <p style={{ fontSize: '0.9375rem', color: 'var(--warn)' }}>
+            <p style={{ fontSize: '0.9375rem', color: 'inherit' }}>
               It does not give medical advice, and it should never be your only safeguard for a
               critical medication. Always follow the instructions from your doctor or pharmacist, and
               talk to them before changing anything about how you take a medicine.{' '}
