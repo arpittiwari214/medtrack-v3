@@ -1,0 +1,488 @@
+/* ==========================================================================
+   TODAY SCREEN — reworked.
+
+   Scoped to this screen so the rest of the app is untouched while the direction
+   is judged. Three deliberate departures from the previous version:
+
+   1. **One focal element.** The screen answers "what do I take next" before
+      anything else, so the next dose is a single dominant block and everything
+      else is subordinate. Previously four identical cards competed at equal
+      weight and nothing told you where to look first.
+
+   2. **A schedule rail, not a card list.** Time runs down a left gutter as a
+      spine with state dots on it — the shape of a medication chart, which is
+      what this actually is. A vertical stack of rounded cards is the generic
+      layout; a rail carries sequence and progress for free.
+
+   3. **Sharper and quieter.** 6–10px radii instead of 14–20, hairlines instead
+      of shadows, tabular numerals throughout, uppercase micro-labels. Large
+      soft corners and pastel fills read friendly-consumer; this should read
+      like an instrument you trust.
+   ========================================================================== */
+
+.today {
+  --r-clin: 10px;
+  --r-clin-sm: 6px;
+
+  /* Primary-action fill and ink.
+     The status green is not usable as a button fill with white text: the light
+     step measures 3.35:1 and the dark step 2.34:1, both well under AA — on the
+     single most important control in the app. So the fill is a deeper green in
+     light mode with white ink (5.32:1), and the bright step in dark mode with
+     dark ink (7.97:1). Ink is chosen by the fill's luminance, not fixed. */
+  --action-fill: #0a7d0a;
+  --action-ink: #ffffff;
+
+  padding-bottom: var(--s6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .today {
+    --action-fill: #3cc23c;
+    --action-ink: #0a1418;
+  }
+}
+
+:root[data-theme='dark'] .today {
+  --action-fill: #3cc23c;
+  --action-ink: #0a1418;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.today-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s5) 0 var(--s4);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--s5);
+}
+
+.today-date {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-greeting {
+  font-size: 1.375rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+
+/* SOS is a restrained outline, not a red slab. A control that shouts
+   permanently stops registering as urgent; it earns attention by being the
+   only red on the screen. */
+.sos-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  /* 44px like every other control. An emergency button is the last place to
+     shave the hit area. */
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border: 1.5px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: var(--r-clin-sm);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.sos-button:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+/* ── Next dose — the focal block ────────────────────────────────────────── */
+
+.next-dose {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-clin);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* A thin accent edge rather than a tinted panel: says the medicine matters
+   without washing the whole block in colour. */
+.next-dose-critical {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border-strong));
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.next-dose-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.next-dose-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  /* One step darker than the other micro-labels: this one sits on the tinted
+     header strip rather than the surface, which cost it ~0.3 and dropped it to
+     4.35:1 — under AA. */
+  color: var(--text-2);
+}
+
+.next-dose-when {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.next-dose-body {
+  padding: var(--s5) var(--s4);
+}
+
+.next-dose-name {
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.next-dose-meta {
+  margin-top: var(--s1);
+  color: var(--text-2);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.next-dose-note {
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border-radius: var(--r-clin-sm);
+  background: var(--surface-2);
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+
+/* One unmistakable primary, two quiet secondaries. Previously all three were
+   the same size, so "Skip" competed with "Taken". */
+.next-dose-actions {
+  display: grid;
+  gap: var(--s2);
+  padding: 0 var(--s4) var(--s4);
+}
+
+.action-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 52px;
+  border: none;
+  border-radius: var(--r-clin-sm);
+  background: var(--action-fill);
+  color: var(--action-ink);
+  font-size: 1rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.action-primary:hover {
+  filter: brightness(1.07);
+}
+
+.action-secondary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+
+.action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-clin-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.action-secondary:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ── Day progress ───────────────────────────────────────────────────────── */
+
+.day-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: var(--s6) 0 var(--s3);
+}
+
+.day-progress-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* Segmented rather than a continuous bar: at four doses a day you can count
+   the segments, which is more useful than reading a percentage. */
+.day-segments {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.day-segment {
+  flex: 1;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+
+.day-segment-taken {
+  background: var(--ok);
+}
+.day-segment-missed {
+  background: var(--danger);
+}
+.day-segment-skipped {
+  background: var(--border-strong);
+}
+
+.day-progress-count {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Schedule rail ──────────────────────────────────────────────────────── */
+
+.rail-row {
+  /* time · dot · name · state — a fixed spine so times align down the column.
+     The time column is sized for the widest value ("10:00 PM"); at 4.25rem it
+     wrapped onto two lines and that one row stood 18px taller than its
+     neighbours, which broke the rhythm of the whole rail. */
+  display: grid;
+  grid-template-columns: 4.75rem 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) 0;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  border-radius: var(--r-clin-sm);
+  transition: background-color 0.12s ease;
+}
+
+.rail-row:hover {
+  background: var(--surface-2);
+}
+
+.rail-time {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-right: var(--s2);
+  /* Belt and braces: a wrapped time would desynchronise the row heights again. */
+  white-space: nowrap;
+}
+
+/* The spine: a hairline running through every dot, drawn per row so the first
+   and last rows can cap it cleanly. */
+.rail-marker {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}
+
+.rail-marker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.rail-row:first-child .rail-marker::before {
+  top: 50%;
+}
+
+.rail-row:last-child .rail-marker::before {
+  bottom: 50%;
+}
+
+.rail-dot {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  /* A surface ring keeps the dot legible where it crosses the spine. */
+  box-shadow: 0 0 0 3px var(--surface);
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+}
+
+.rail-dot-taken {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.rail-dot-missed {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.rail-dot-snoozed {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+.rail-dot-skipped {
+  background: var(--border-strong);
+  border-color: var(--border-strong);
+}
+
+.rail-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-strength {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+.rail-state {
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-3);
+}
+
+.rail-state-taken {
+  color: var(--ok);
+}
+.rail-state-missed {
+  color: var(--danger);
+}
+.rail-state-snoozed {
+  color: var(--warn);
+}
+
+.rail-critical {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--danger);
+  margin-left: var(--s2);
+  vertical-align: middle;
+}
+
+/* ── Section heading ────────────────────────────────────────────────────── */
+
+.today-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s6) 0 var(--s2);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--border);
+}
+
+.today-section h2 {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ── All-clear ──────────────────────────────────────────────────────────── */
+
+.all-clear {
+  border: 1px solid var(--border);
+  border-radius: var(--r-clin);
+  padding: var(--s6) var(--s4);
+  text-align: center;
+  background: var(--surface);
+}
+
+.all-clear-mark {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto var(--s3);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+/* ── Snooze sheet ───────────────────────────────────────────────────────── */
+
+.snooze-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--s2);
+}
+
+.snooze-option {
+  min-height: 56px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-clin-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 650;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.snooze-option:hover {
+  background: var(--surface-2);
+  border-color: var(--text-3);
+}

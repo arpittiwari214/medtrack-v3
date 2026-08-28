@@ -10,6 +10,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { DoseStatus } from '@medtrack/shared';
+import { Calendar, Chart, Home, Pill, Settings } from './icons.js';
 
 export function Spinner({ label = 'Loading' }: { label?: string }) {
   return (
@@ -118,25 +119,27 @@ export function PageHeader({
 }
 
 const NAV_ITEMS = [
-  { to: '/app', icon: '🏠', label: 'Today', end: true },
-  { to: '/app/medicines', icon: '💊', label: 'Medicines', end: false },
-  { to: '/app/analytics', icon: '📈', label: 'Insights', end: false },
-  { to: '/app/appointments', icon: '📅', label: 'Visits', end: false },
-  { to: '/app/settings', icon: '⚙️', label: 'Settings', end: false },
+  { to: '/app', Icon: Home, label: 'Today', end: true },
+  { to: '/app/medicines', Icon: Pill, label: 'Medicines', end: false },
+  { to: '/app/analytics', Icon: Chart, label: 'Insights', end: false },
+  { to: '/app/appointments', Icon: Calendar, label: 'Visits', end: false },
+  { to: '/app/settings', Icon: Settings, label: 'Settings', end: false },
 ];
 
 export function BottomNav({ alertCount = 0 }: { alertCount?: number }) {
   return (
     <nav className="bottom-nav" aria-label="Main">
-      {NAV_ITEMS.map((item) => (
-        <NavLink key={item.to} to={item.to} end={item.end} className="nav-item">
-          <span className="nav-icon" aria-hidden="true">
-            {item.icon}
-            {item.to === '/app/settings' && alertCount > 0 && (
+      {NAV_ITEMS.map(({ to, Icon, label, end }) => (
+        <NavLink key={to} to={to} end={end} className="nav-item">
+          <span className="nav-icon">
+            {/* Stroked icons inherit the active colour and sit level with the
+                label, which platform-drawn emoji cannot do. */}
+            <Icon size={22} />
+            {to === '/app/settings' && alertCount > 0 && (
               <span className="nav-badge">{alertCount > 9 ? '9+' : alertCount}</span>
             )}
           </span>
-          {item.label}
+          {label}
         </NavLink>
       ))}
     </nav>
