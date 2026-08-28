@@ -20,6 +20,15 @@ beforeAll(() => {
 
 const IST = 'Asia/Kolkata';
 
+/**
+ * Fixture start date, relative to today.
+ *
+ * Hardcoding a literal date made the suite rot: doses materialise forward from
+ * today, so a fixed startDate drifts further into the past each day and changes
+ * which rows exist.
+ */
+const TODAY_IST = new Intl.DateTimeFormat('en-CA', { timeZone: IST }).format(new Date());
+
 interface Account {
   token: string;
   refreshToken: string;
@@ -66,7 +75,7 @@ async function createMedicine(
     schedule: {
       kind: 'daily',
       times: ['08:00', '21:00'],
-      startDate: '2026-08-25',
+      startDate: TODAY_IST,
     },
     ...overrides,
   });
@@ -204,7 +213,7 @@ describe('medicines', () => {
     const duplicate = await authed(account)(request(app).post('/api/medicines')).send({
       name: 'Metformin',
       strength: '500 mg',
-      schedule: { kind: 'daily', times: ['08:00', '21:00'], startDate: '2026-08-25' },
+      schedule: { kind: 'daily', times: ['08:00', '21:00'], startDate: TODAY_IST },
     });
     expect(duplicate.status).toBe(409);
   });
@@ -213,15 +222,34 @@ describe('medicines', () => {
     const account = await signup();
     const medicine = await createMedicine(account);
 
-    const before = await DoseEvent.countDocuments({ medicineId: medicine['id'] });
-    expect(before).toBeGreaterThan(0);
+    const doses = await DoseEvent.find({ medicineId: medicine['id'] }).sort({ scheduledAt: 1 }).lean();
+    expect(doses.length).toBeGreaterThan(0);
+
+    // Resolve one dose so there is real history to preserve.
+    //
+    // Asserting on "some dose survives" alone was date-dependent and quietly
+    // wrong: doses are materialised forward from today, so on most days every
+    // row is in the future and archiving legitimately removes all of them. The
+    // guarantee worth testing is that a dose the patient *acted on* survives.
+    const logged = doses[0]!;
+    await authed(account)(request(app).post(`/api/doses/${logged._id}/take`)).send({}).expect(200);
 
     await authed(account)(request(app).delete(`/api/medicines/${medicine['id']}`)).expect(200);
 
-    // v3 deleted every dose log along with the medicine, silently rewriting
-    // the patient's adherence history.
-    const remaining = await DoseEvent.countDocuments({ medicineId: medicine['id'] });
-    expect(remaining).toBeGreaterThan(0);
+    // v3 deleted every dose log along with the medicine, silently rewriting the
+    // patient's adherence history.
+    const survivor = await DoseEvent.findById(logged._id).lean();
+    expect(survivor).not.toBeNull();
+    expect(survivor!.status).toBe('taken');
+
+    // ...while unresolved future doses are cleared, so nothing is still pending
+    // for a medicine that is no longer being taken.
+    const pending = await DoseEvent.countDocuments({
+      medicineId: medicine['id'],
+      status: { $in: ['scheduled', 'snoozed'] },
+      scheduledAt: { $gt: new Date() },
+    });
+    expect(pending).toBe(0);
   });
 
   it('does not let one user read another user’s medicines', async () => {
