@@ -15,7 +15,7 @@ import { pinoHttp } from 'pino-http';
 import { corsOrigins, env, isProduction } from './config/env.js';
 import { isDatabaseHealthy } from './config/db.js';
 import { logger } from './config/logger.js';
-import { errorHandler, notFoundHandler } from './middleware/error.js';
+import { AppError, errorHandler, notFoundHandler } from './middleware/error.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import accountRoutes from './routes/account.js';
 import alertRoutes from './routes/alerts.js';
@@ -67,7 +67,15 @@ export function createApp(): Express {
           callback(null, true);
           return;
         }
-        callback(new Error('Not allowed by CORS'));
+        // A disallowed origin is the *caller* being wrong, not the server
+        // failing. Throwing a bare Error here falls through to the generic
+        // handler and reports 500, which misattributes a config mistake as an
+        // outage — and pages someone for it.
+        callback(
+          new AppError(403, 'FORBIDDEN', 'This origin is not allowed to call the API.', {
+            context: { origin, allowed: corsOrigins },
+          }),
+        );
       },
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
