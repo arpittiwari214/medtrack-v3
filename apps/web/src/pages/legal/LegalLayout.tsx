@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { Info, Pill } from '../../components/icons.js';
 
 /**
  * Shared chrome for the legal documents.
@@ -25,10 +26,9 @@ export default function LegalLayout({
     <>
       <header className="site-header">
         <div className="container row-between" style={{ minHeight: 64 }}>
-          <Link to="/" style={{ textDecoration: 'none', color: 'var(--text)' }}>
-            <strong>
-              <span aria-hidden="true">💊</span> MedTrack
-            </strong>
+          <Link to="/" className="brand-mark">
+            <Pill size={20} />
+            MedTrack
           </Link>
           <Link className="btn btn-ghost btn-sm" to="/">
             Back
@@ -38,7 +38,7 @@ export default function LegalLayout({
 
       <main id="main" className="doc">
         <h1>{title}</h1>
-        <p className="doc-meta">
+        <p className="doc-meta numeric">
           Version {version} · In effect from {effectiveDate}
         </p>
 
@@ -46,7 +46,7 @@ export default function LegalLayout({
             still governs, but nobody should have to read three thousand words
             to learn what the service actually does with their data. */}
         <div className="alert alert-info" style={{ marginBottom: 'var(--s6)' }}>
-          <span aria-hidden="true">ℹ</span>
+          <Info size={18} />
           <div>
             <strong>In short:</strong> {summary}
           </div>
@@ -54,7 +54,13 @@ export default function LegalLayout({
 
         {children}
 
-        <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: 'var(--s7) 0 var(--s5)' }} />
+        <hr
+          style={{
+            border: 'none',
+            borderTop: '1px solid var(--border)',
+            margin: 'var(--s7) 0 var(--s5)',
+          }}
+        />
 
         <ul className="footer-links">
           <li>

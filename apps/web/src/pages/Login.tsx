@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.js';
+import { ErrorBanner } from '../components/ui.js';
+import { Pill } from '../components/icons.js';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -14,6 +16,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
 
   const returnTo = (location.state as { from?: string } | null)?.from ?? '/app';
+  const notice = (location.state as { message?: string } | null)?.message;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -34,22 +37,24 @@ export default function Login() {
   }
 
   return (
-    <main id="main" className="container" style={{ maxWidth: 440, paddingBlock: 'var(--s8)' }}>
-      <div className="stack" style={{ textAlign: 'center', marginBottom: 'var(--s6)' }}>
-        <Link to="/" style={{ textDecoration: 'none', fontSize: '2rem' }} aria-label="MedTrack home">
-          💊
+    <main id="main" className="auth-shell">
+      <div className="auth-head">
+        <Link to="/" className="brand-mark mb-4" aria-label="MedTrack home">
+          <Pill size={20} />
+          MedTrack
         </Link>
-        <h1 style={{ fontSize: '1.5rem' }}>Welcome back</h1>
-        <p className="muted">Sign in to see today’s doses.</p>
+        <h1 className="t-title">Welcome back</h1>
+        <p className="muted t-sm mt-2">Sign in to see today’s doses.</p>
       </div>
 
-      <form className="card stack" onSubmit={handleSubmit} noValidate>
-        {error && (
-          <div className="alert alert-error" role="alert">
-            <span aria-hidden="true">⚠</span>
-            <span>{error}</span>
-          </div>
-        )}
+      {notice && (
+        <div className="alert alert-ok mb-4" role="status">
+          <span>{notice}</span>
+        </div>
+      )}
+
+      <form className="panel panel-pad stack" onSubmit={handleSubmit} noValidate>
+        {error && <ErrorBanner message={error} />}
 
         <div className="field">
           <label className="label" htmlFor="email">
@@ -85,12 +90,14 @@ export default function Login() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
 
-        <div style={{ textAlign: 'center' }}>
-          <Link to="/forgot-password">Forgot your password?</Link>
+        <div className="center">
+          <Link className="t-sm" to="/forgot-password">
+            Forgot your password?
+          </Link>
         </div>
       </form>
 
-      <p style={{ textAlign: 'center', marginTop: 'var(--s5)' }} className="muted">
+      <p className="center muted t-sm mt-5">
         Don’t have an account? <Link to="/signup">Create one</Link>
       </p>
     </main>

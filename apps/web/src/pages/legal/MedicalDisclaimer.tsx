@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import LegalLayout from './LegalLayout.js';
+import { AlertTriangle } from '../../components/icons.js';
 
 /**
  * Medical Disclaimer.
@@ -66,7 +67,7 @@ export default function MedicalDisclaimer() {
 
       <h2>In an emergency</h2>
       <div className="alert alert-error" style={{ marginBottom: 'var(--s4)' }}>
-        <span aria-hidden="true">⚠</span>
+        <AlertTriangle size={18} />
         <div>
           <strong>MedTrack is not an emergency service.</strong> The SOS button notifies the
           caregivers you set up, by email and push notification. It does not contact emergency

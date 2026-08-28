@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import LegalLayout from './LegalLayout.js';
+import { AlertTriangle } from '../../components/icons.js';
 
 /**
  * Terms of Service.
@@ -21,7 +22,7 @@ export default function Terms() {
       summary="MedTrack is a free reminder tool. It is not a medical device and does not give medical advice. Use it as a helper, never as your only safeguard for an important medicine. Your data stays yours, and you can leave at any time."
     >
       <div className="alert alert-warn" style={{ marginBottom: 'var(--s5)' }}>
-        <span aria-hidden="true">⚠</span>
+        <AlertTriangle size={18} />
         <div>
           <strong>Before you publish this:</strong> complete <code>[OPERATOR NAME]</code>,{' '}
           <code>[REGISTERED ADDRESS]</code>, <code>[SUPPORT EMAIL]</code> and{' '}

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { formatTime12h } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { medicinesApi, type MedicineWithStock } from '../api/endpoints.js';
-import { EmptyState, ErrorBanner, Modal, PageHeader, Spinner } from '../components/ui.js';
+import { EmptyState, ErrorBanner, Modal, ScreenHeader, Spinner } from '../components/ui.js';
+import { AlertTriangle, Package, Pill, Plus } from '../components/icons.js';
 
 const SCHEDULE_LABEL: Record<string, string> = {
   daily: 'Every day',
@@ -36,7 +37,6 @@ export default function Medicines() {
   }, [load]);
 
   async function archive(medicine: MedicineWithStock) {
-    // Worth confirming: it changes what the app reminds them about.
     const confirmed = window.confirm(
       `Stop reminders for ${medicine.name}?\n\nYour history is kept — you can restore it later.`,
     );
@@ -53,13 +53,14 @@ export default function Medicines() {
   if (loading) return <Spinner label="Loading medicines" />;
 
   return (
-    <div className="stack">
-      <PageHeader
+    <div>
+      <ScreenHeader
+        eyebrow={medicines.length > 0 ? `${medicines.length} active` : undefined}
         title="Medicines"
-        subtitle={medicines.length > 0 ? `${medicines.length} active` : undefined}
         action={
           <Link className="btn btn-primary btn-sm" to="/app/medicines/new">
-            + Add
+            <Plus size={16} />
+            Add
           </Link>
         }
       />
@@ -68,9 +69,9 @@ export default function Medicines() {
 
       {medicines.length === 0 ? (
         <EmptyState
-          icon="💊"
+          icon={<Pill size={22} />}
           title="No medicines yet"
-          description="Add your first medicine and MedTrack will build a daily schedule and start reminding you."
+          description="Add your first medicine and MedTrack builds a daily schedule and starts reminding you."
           action={
             <Link className="btn btn-primary" to="/app/medicines/new">
               Add a medicine
@@ -78,72 +79,85 @@ export default function Medicines() {
           }
         />
       ) : (
-        medicines.map((medicine) => (
-          <article key={medicine.id} className="card card-tight stack" style={{ gap: 'var(--s3)' }}>
-            <div className="row-between">
-              <div style={{ minWidth: 0 }}>
-                <h2 style={{ fontSize: '1.0625rem' }}>
-                  {medicine.name}
-                  {medicine.isCritical && (
-                    <span className="badge badge-danger" style={{ marginLeft: 'var(--s2)' }}>
-                      Critical
-                    </span>
-                  )}
-                </h2>
-                <p className="subtle">
-                  {medicine.strength} · {SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind}
-                </p>
-              </div>
-            </div>
+        <div className="stack">
+          {medicines.map((medicine) => {
+            const low =
+              medicine.stock !== null &&
+              medicine.dosesRemaining !== null &&
+              medicine.dosesRemaining <= 6;
 
-            {medicine.schedule.times.length > 0 && (
-              <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--s2)' }}>
-                {medicine.schedule.times.map((time) => (
-                  <span key={time} className="badge badge-neutral">
-                    {formatTime12h(time)}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {medicine.instructions && <p className="subtle">{medicine.instructions}</p>}
-
-            {/* Supply is shown as doses, not units — "6 doses left" is what a
-                patient can act on; "12 tablets" needs mental arithmetic. */}
-            {medicine.stock && (
-              <div
-                className={`alert ${
-                  medicine.dosesRemaining !== null && medicine.dosesRemaining <= 3
-                    ? 'alert-warn'
-                    : 'alert-info'
-                }`}
-                style={{ padding: 'var(--s3)' }}
+            return (
+              <article
+                key={medicine.id}
+                className={`panel${medicine.isCritical ? ' panel-critical' : ''}`}
               >
-                <span aria-hidden="true">📦</span>
-                <div style={{ flex: 1, fontSize: '0.875rem' }}>
-                  <strong>{medicine.dosesRemaining ?? 0} doses left</strong>
-                  {medicine.projectedRunOut && <> · runs out around {medicine.projectedRunOut}</>}
+                <div className="panel-head">
+                  <span className="micro truncate">
+                    {SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind}
+                  </span>
+                  {medicine.isCritical && <span className="badge badge-danger">Critical</span>}
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => setRefillTarget(medicine)}
-                >
-                  Refill
-                </button>
-              </div>
-            )}
 
-            <div className="row" style={{ gap: 'var(--s2)' }}>
-              <Link className="btn btn-secondary btn-sm" to={`/app/medicines/${medicine.id}/edit`}>
-                Edit
-              </Link>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => archive(medicine)}>
-                Stop reminders
-              </button>
-            </div>
-          </article>
-        ))
+                <div className="panel-body">
+                  <div className="row-between">
+                    <div className="flex-1">
+                      <h2 className="t-lg truncate">{medicine.name}</h2>
+                      <p className="subtle">{medicine.strength}</p>
+                    </div>
+                  </div>
+
+                  {medicine.schedule.times.length > 0 && (
+                    <div className="row row-wrap mt-3" style={{ gap: 'var(--s2)' }}>
+                      {medicine.schedule.times.map((time) => (
+                        <span key={time} className="badge badge-neutral numeric">
+                          {formatTime12h(time)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {medicine.instructions && (
+                    <p className="subtle mt-3">{medicine.instructions}</p>
+                  )}
+
+                  {/* Supply is shown in doses, not units — "6 doses left" is
+                      actionable; "12 tablets" needs mental arithmetic. */}
+                  {medicine.stock && (
+                    <div className={`alert ${low ? 'alert-warn' : 'alert-info'} mt-3`}>
+                      <Package size={18} />
+                      <div className="flex-1">
+                        <strong>{medicine.dosesRemaining ?? 0} doses left</strong>
+                        {medicine.projectedRunOut && (
+                          <span className="t-xs"> · runs out around {medicine.projectedRunOut}</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setRefillTarget(medicine)}
+                      >
+                        Refill
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="row mt-4" style={{ gap: 'var(--s2)' }}>
+                    <Link className="btn btn-secondary btn-sm" to={`/app/medicines/${medicine.id}/edit`}>
+                      Edit
+                    </Link>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => archive(medicine)}
+                    >
+                      Stop reminders
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       )}
 
       {refillTarget && (
@@ -193,14 +207,19 @@ function RefillModal({
   return (
     <Modal title={`Refill ${medicine.name}`} onClose={onClose}>
       <div className="stack">
-        {error && <ErrorBanner message={error} />}
+        {error && (
+          <div className="alert alert-error" role="alert">
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
         <div className="field">
           <label className="label" htmlFor="units">
             How many did you add?
           </label>
           <input
             id="units"
-            className="input"
+            className="input numeric"
             type="number"
             min={1}
             inputMode="numeric"
@@ -211,7 +230,7 @@ function RefillModal({
             Individual tablets or units, not packs. Currently {medicine.stock?.unitsRemaining ?? 0} left.
           </span>
         </div>
-        <button type="button" className="btn btn-primary btn-block" onClick={submit} disabled={busy}>
+        <button type="button" className="action-primary" onClick={submit} disabled={busy}>
           {busy ? 'Saving…' : 'Add to supply'}
         </button>
       </div>

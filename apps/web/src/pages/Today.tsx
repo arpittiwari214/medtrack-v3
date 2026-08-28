@@ -1,14 +1,13 @@
 /**
  * Today's doses.
  *
- * Reworked around one question: *what do I take next?* That gets a single
- * dominant block; everything else on the screen is subordinate to it. The rest
- * of the day is a schedule rail — time down a left spine with state dots on it,
- * which is the shape of a medication chart rather than a stack of cards.
+ * Built around one question: *what do I take next?* That gets a single dominant
+ * block; everything else is subordinate. The rest of the day is a schedule rail
+ * — time down a left spine with state dots — which is the shape of a medication
+ * chart rather than a stack of cards.
  *
- * Actions stay optimistic: tapping "Taken" records it immediately and rolls
- * back on failure. Waiting on a round trip to confirm something the patient
- * physically just did feels broken.
+ * Actions are optimistic and roll back on failure. Waiting on a round trip to
+ * confirm something the patient physically just did feels broken.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,7 +20,6 @@ import { ErrorBanner, Modal, Spinner } from '../components/ui.js';
 import { AlertTriangle, Check, Clock, Info, Pill, SkipForward, Undo } from '../components/icons.js';
 import './today.css';
 
-/** Label shown at the right of a rail row. Words, not colour alone. */
 const STATE_LABEL: Record<DoseStatus, string> = {
   taken: 'Taken',
   missed: 'Missed',
@@ -53,7 +51,6 @@ export default function Today() {
     void load();
   }, [load]);
 
-  /** Everything for today, in the order it falls. */
   const ordered = useMemo(() => {
     if (!data) return [];
     return [...data.upcoming, ...data.taken, ...data.missed, ...data.skipped].sort((a, b) =>
@@ -61,22 +58,18 @@ export default function Today() {
     );
   }, [data]);
 
-  /**
-   * The one dose the screen is about: the earliest still needing action.
-   * A missed dose outranks an upcoming one — it is the more urgent ask.
-   */
+  /** The earliest dose still needing action. A missed one outranks an upcoming one. */
   const focus = useMemo(() => {
     if (!data) return null;
-    const missed = [...data.missed].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-    const upcoming = [...data.upcoming].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-    return missed[0] ?? upcoming[0] ?? null;
+    const byTime = (list: DoseEvent[]) =>
+      [...list].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+    return byTime(data.missed)[0] ?? byTime(data.upcoming)[0] ?? null;
   }, [data]);
 
   async function act(dose: DoseEvent, action: 'take' | 'skip' | 'undo') {
     if (!data) return;
     const previous = data;
 
-    // Move it out of the pending buckets immediately so the tap feels instant.
     setData({
       ...data,
       upcoming: data.upcoming.filter((d) => d.id !== dose.id),
@@ -114,11 +107,11 @@ export default function Today() {
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
   return (
-    <div className="today">
-      <header className="today-head">
+    <div>
+      <header className="screen-head">
         <div>
-          <p className="today-date">{longDate(data.date)}</p>
-          <h1 className="today-greeting">
+          <p className="micro numeric">{longDate(data.date)}</p>
+          <h1 className="t-title mt-2">
             {greeting()}, {firstName}
           </h1>
         </div>
@@ -131,14 +124,12 @@ export default function Today() {
       {error && <ErrorBanner message={error} />}
 
       {total === 0 ? (
-        <div className="all-clear">
-          <div className="all-clear-mark">
+        <div className="empty">
+          <div className="empty-mark">
             <Pill size={22} />
           </div>
-          <h2 style={{ fontSize: '1.0625rem' }}>Nothing scheduled today</h2>
-          <p className="muted" style={{ margin: 'var(--s2) 0 var(--s4)' }}>
-            Add a medicine and your daily schedule builds itself.
-          </p>
+          <h2 className="t-lg">Nothing scheduled today</h2>
+          <p className="muted t-sm mt-2 mb-4">Add a medicine and your daily schedule builds itself.</p>
           <Link className="btn btn-primary" to="/app/medicines/new">
             Add a medicine
           </Link>
@@ -151,12 +142,12 @@ export default function Today() {
           onSkip={() => act(focus, 'skip')}
         />
       ) : (
-        <div className="all-clear">
-          <div className="all-clear-mark">
+        <div className="empty">
+          <div className="empty-mark" style={{ background: 'var(--ok-bg)', color: 'var(--ok)' }}>
             <Check size={22} />
           </div>
-          <h2 style={{ fontSize: '1.0625rem' }}>All done for today</h2>
-          <p className="muted" style={{ marginTop: 'var(--s2)' }}>
+          <h2 className="t-lg">All done for today</h2>
+          <p className="muted t-sm mt-2">
             {data.taken.length} of {total} doses taken.
           </p>
         </div>
@@ -165,34 +156,23 @@ export default function Today() {
       {total > 0 && (
         <>
           <div className="day-progress">
-            <span className="day-progress-label">Today</span>
+            <span className="micro">Today</span>
             <div
               className="day-segments"
               role="img"
               aria-label={`${data.taken.length} of ${total} doses taken`}
             >
               {ordered.map((dose) => (
-                <span
-                  key={dose.id}
-                  className={`day-segment ${
-                    dose.status === 'taken'
-                      ? 'day-segment-taken'
-                      : dose.status === 'missed'
-                        ? 'day-segment-missed'
-                        : dose.status === 'skipped'
-                          ? 'day-segment-skipped'
-                          : ''
-                  }`}
-                />
+                <span key={dose.id} className={`day-segment day-segment-${dose.status}`} />
               ))}
             </div>
-            <span className="day-progress-count">
+            <span className="t-xs numeric muted">
               {done}/{total}
             </span>
           </div>
 
-          <div className="today-section">
-            <h2>Schedule</h2>
+          <div className="section-head">
+            <h2 className="micro">Schedule</h2>
           </div>
 
           <div>
@@ -210,7 +190,7 @@ export default function Today() {
 
       {snoozeTarget && (
         <Modal title={`Snooze ${snoozeTarget.medicineName}`} onClose={() => setSnoozeTarget(null)}>
-          <p className="muted" style={{ marginBottom: 'var(--s4)' }}>
+          <p className="muted t-sm mb-4">
             We’ll remind you again after this. The dose stays on today’s schedule either way.
           </p>
           <div className="snooze-grid">
@@ -233,8 +213,6 @@ export default function Today() {
   );
 }
 
-/* ── The focal block ─────────────────────────────────────────────────────── */
-
 function NextDose({
   dose,
   onTake,
@@ -249,13 +227,13 @@ function NextDose({
   const overdue = dose.status === 'missed';
 
   return (
-    <section className={`next-dose${dose.isCritical ? ' next-dose-critical' : ''}`}>
-      <div className="next-dose-head">
-        <span className="next-dose-label">{overdue ? 'Overdue' : 'Next dose'}</span>
-        <span className="next-dose-when">{relativeTo(dose.scheduledAt)}</span>
+    <section className={`panel${dose.isCritical ? ' panel-critical' : ''}`}>
+      <div className="panel-head">
+        <span className="micro">{overdue ? 'Overdue' : 'Next dose'}</span>
+        <span className="t-xs muted numeric">{relativeTo(dose.scheduledAt)}</span>
       </div>
 
-      <div className="next-dose-body">
+      <div className="panel-pad">
         <h2 className="next-dose-name">{dose.medicineName}</h2>
         <p className="next-dose-meta">
           {dose.medicineStrength} · {formatTime12h(dose.localTime)}
@@ -275,7 +253,7 @@ function NextDose({
           <Check size={20} />
           Mark as taken
         </button>
-        <div className="action-secondary-row">
+        <div className="split">
           <button type="button" className="action-secondary" onClick={onSnooze}>
             <Clock size={16} />
             Snooze
@@ -289,8 +267,6 @@ function NextDose({
     </section>
   );
 }
-
-/* ── Schedule rail ───────────────────────────────────────────────────────── */
 
 function RailRow({
   dose,
@@ -314,28 +290,19 @@ function RailRow({
       }`}
     >
       <span className="rail-time">{formatTime12h(dose.localTime)}</span>
-
       <span className="rail-marker">
         <span className={`rail-dot rail-dot-${dose.status}`} />
       </span>
-
       <span className="rail-name">
         {dose.medicineName} <span className="rail-strength">{dose.medicineStrength}</span>
         {dose.isCritical && <span className="rail-critical" aria-label="Critical" />}
       </span>
-
       <span className={`rail-state rail-state-${dose.status}`}>
-        {resolved ? (
-          <Undo size={15} aria-hidden />
-        ) : (
-          label
-        )}
+        {resolved ? <Undo size={15} /> : label}
       </span>
     </button>
   );
 }
-
-/* ── SOS ─────────────────────────────────────────────────────────────────── */
 
 function SosModal({ onClose }: { onClose: () => void }) {
   const [message, setMessage] = useState('');
@@ -364,7 +331,7 @@ function SosModal({ onClose }: { onClose: () => void }) {
           </div>
           {/* Said plainly: this is not an emergency service, and someone in
               trouble must not be left believing that it is. */}
-          <p className="muted" style={{ fontSize: '0.9375rem' }}>
+          <p className="muted t-sm">
             If this is a medical emergency, call your local emergency number. MedTrack notifies your
             caregivers, but it cannot summon help.
           </p>
@@ -374,7 +341,7 @@ function SosModal({ onClose }: { onClose: () => void }) {
         </div>
       ) : (
         <div className="stack">
-          <p className="muted">
+          <p className="muted t-sm">
             This alerts every caregiver you have set up to receive alerts, by email and push.
           </p>
           <div className="field">
@@ -401,8 +368,6 @@ function SosModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-
 function greeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -410,7 +375,6 @@ function greeting(): string {
   return 'Good evening';
 }
 
-/** `Thursday, 29 August` — spelled out, because a date is worth reading once. */
 function longDate(localDate: string): string {
   return new Date(`${localDate}T00:00:00Z`).toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -420,16 +384,14 @@ function longDate(localDate: string): string {
   });
 }
 
-/** `in 2 h 10 m` / `35 min ago` — a duration is easier to act on than a clock time. */
+/** A duration is easier to act on than a clock time. */
 function relativeTo(instant: string): string {
   const deltaMinutes = Math.round((new Date(instant).getTime() - Date.now()) / 60_000);
   const abs = Math.abs(deltaMinutes);
-
   if (abs < 1) return 'now';
 
   const hours = Math.floor(abs / 60);
   const minutes = abs % 60;
   const span = hours > 0 ? `${hours} h${minutes ? ` ${minutes} m` : ''}` : `${minutes} min`;
-
   return deltaMinutes > 0 ? `in ${span}` : `${span} ago`;
 }

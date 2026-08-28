@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client.js';
 import { authApi } from '../api/endpoints.js';
+import { ErrorBanner } from '../components/ui.js';
+import { Pill } from '../components/icons.js';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -38,12 +40,9 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <main id="main" className="container" style={{ maxWidth: 440, paddingBlock: 'var(--s8)' }}>
-        <div className="card stack">
-          <div className="alert alert-error" role="alert">
-            <span aria-hidden="true">⚠</span>
-            <span>That reset link is incomplete. Please request a new one.</span>
-          </div>
+      <main id="main" className="auth-shell">
+        <div className="panel panel-pad stack">
+          <ErrorBanner message="That reset link is incomplete. Please request a new one." />
           <Link className="btn btn-primary btn-block" to="/forgot-password">
             Request a new link
           </Link>
@@ -53,16 +52,17 @@ export default function ResetPassword() {
   }
 
   return (
-    <main id="main" className="container" style={{ maxWidth: 440, paddingBlock: 'var(--s8)' }}>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: 'var(--s4)' }}>Choose a new password</h1>
+    <main id="main" className="auth-shell">
+      <div className="auth-head">
+        <Link to="/" className="brand-mark mb-4" aria-label="MedTrack home">
+          <Pill size={20} />
+          MedTrack
+        </Link>
+        <h1 className="t-title">Choose a new password</h1>
+      </div>
 
-      <form className="card stack" onSubmit={handleSubmit}>
-        {error && (
-          <div className="alert alert-error" role="alert">
-            <span aria-hidden="true">⚠</span>
-            <span>{error}</span>
-          </div>
-        )}
+      <form className="panel panel-pad stack" onSubmit={handleSubmit}>
+        {error && <ErrorBanner message={error} />}
 
         <div className="field">
           <label className="label" htmlFor="password">

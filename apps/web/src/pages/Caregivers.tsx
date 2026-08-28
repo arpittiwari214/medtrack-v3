@@ -1,19 +1,20 @@
 /**
  * Managing who can see your data.
  *
- * The screen is written so that granting access is a deliberate act with
- * visible consequences, and withdrawing it is a single tap that needs nobody
- * else's agreement. Under the DPDP Act consent must be as easy to withdraw as
- * it was to give, and that is a reasonable design rule regardless of the law.
+ * Written so that granting access is a deliberate act with visible
+ * consequences, and withdrawing it is a single tap needing nobody else's
+ * agreement. The DPDP Act requires consent to be as easy to withdraw as to
+ * give; it is a reasonable design rule regardless of the law.
  */
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { CarePermissions } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { careApi, type CaregiverEntry } from '../api/endpoints.js';
-import { EmptyState, ErrorBanner, Modal, PageHeader, Spinner } from '../components/ui.js';
+import { EmptyState, ErrorBanner, Modal, ScreenHeader, Spinner } from '../components/ui.js';
+import { Check, Plus, Users } from '../components/icons.js';
 
-const PERMISSION_LABELS: { key: keyof CarePermissions; label: string; description: string }[] = [
+const PERMISSIONS: { key: keyof CarePermissions; label: string; description: string }[] = [
   { key: 'viewMedicines', label: 'See my medicines', description: 'Names, strengths and schedules.' },
   { key: 'viewAdherence', label: 'See whether I took them', description: 'Daily history and trends.' },
   { key: 'viewAppointments', label: 'See my appointments', description: 'Doctor visits and lab tests.' },
@@ -53,7 +54,7 @@ export default function Caregivers() {
 
   async function revoke(caregiver: CaregiverEntry) {
     const confirmed = window.confirm(
-      `Withdraw ${caregiver.email}'s access?\n\nThey will immediately stop seeing your information and stop receiving alerts.`,
+      `Withdraw ${caregiver.email}'s access?\n\nThey immediately stop seeing your information and stop receiving alerts.`,
     );
     if (!confirmed) return;
 
@@ -68,13 +69,14 @@ export default function Caregivers() {
   if (loading) return <Spinner label="Loading caregivers" />;
 
   return (
-    <div className="stack">
-      <PageHeader
+    <div>
+      <ScreenHeader
+        eyebrow="People who can see what you share"
         title="Caregivers"
-        subtitle="People who can see what you choose to share"
         action={
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setInviteOpen(true)}>
-            + Invite
+            <Plus size={16} />
+            Invite
           </button>
         }
       />
@@ -83,7 +85,7 @@ export default function Caregivers() {
 
       {caregivers.length === 0 ? (
         <EmptyState
-          icon="👥"
+          icon={<Users size={22} />}
           title="No caregivers yet"
           description="Invite someone you trust. You choose exactly what they see, and you can withdraw it at any time without asking them."
           action={
@@ -93,35 +95,41 @@ export default function Caregivers() {
           }
         />
       ) : (
-        caregivers.map((caregiver) => (
-          <article key={caregiver.id} className="card card-tight stack" style={{ gap: 'var(--s3)' }}>
-            <div className="row-between">
-              <div style={{ minWidth: 0 }}>
-                <h2 style={{ fontSize: '1rem' }}>{caregiver.relation}</h2>
-                <p className="subtle" style={{ wordBreak: 'break-all' }}>
+        <div className="stack">
+          {caregivers.map((caregiver) => (
+            <article key={caregiver.id} className="panel">
+              <div className="panel-head">
+                <span className="micro">{caregiver.relation}</span>
+                <span className={`badge ${caregiver.status === 'active' ? 'badge-ok' : 'badge-warn'}`}>
+                  {caregiver.status === 'active' ? 'Active' : 'Invited'}
+                </span>
+              </div>
+
+              <div className="panel-body">
+                <p className="t-sm truncate" style={{ fontWeight: 600 }}>
                   {caregiver.email}
                 </p>
+
+                <ul className="stack stack-sm mt-3" style={{ listStyle: 'none', padding: 0 }}>
+                  {PERMISSIONS.filter((p) => caregiver.permissions[p.key]).map((p) => (
+                    <li key={p.key} className="row muted t-sm" style={{ gap: 'var(--s2)' }}>
+                      <Check size={15} />
+                      {p.label}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm mt-4"
+                  onClick={() => revoke(caregiver)}
+                >
+                  Withdraw access
+                </button>
               </div>
-              <span className={`badge ${caregiver.status === 'active' ? 'badge-ok' : 'badge-warn'}`}>
-                {caregiver.status === 'active' ? 'Active' : 'Invitation sent'}
-              </span>
-            </div>
-
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.875rem' }}>
-              {PERMISSION_LABELS.filter((permission) => caregiver.permissions[permission.key]).map(
-                (permission) => (
-                  <li key={permission.key} className="muted">
-                    <span aria-hidden="true">✓</span> {permission.label}
-                  </li>
-                ),
-              )}
-            </ul>
-
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => revoke(caregiver)}>
-              Withdraw access
-            </button>
-          </article>
-        ))
+            </article>
+          ))}
+        </div>
       )}
 
       {inviteOpen && (
@@ -167,8 +175,8 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
       <form className="stack" onSubmit={submit}>
         {error && <ErrorBanner message={error} />}
 
-        <p className="muted" style={{ fontSize: '0.9375rem' }}>
-          They will get an email inviting them to accept. Nothing is shared until they do.
+        <p className="muted t-sm">
+          They get an email inviting them to accept. Nothing is shared until they do.
         </p>
 
         <div className="field">
@@ -200,10 +208,8 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         </div>
 
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend className="label" style={{ marginBottom: 'var(--s2)' }}>
-            What can they see?
-          </legend>
-          {PERMISSION_LABELS.map((permission) => (
+          <legend className="label mb-3">What can they see?</legend>
+          {PERMISSIONS.map((permission) => (
             <label key={permission.key} className="checkbox-row">
               <input
                 type="checkbox"
@@ -211,7 +217,7 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
                 onChange={() => toggle(permission.key)}
               />
               <span>
-                <strong style={{ fontSize: '0.9375rem' }}>{permission.label}</strong>
+                <strong className="t-sm">{permission.label}</strong>
                 <span className="field-hint" style={{ display: 'block' }}>
                   {permission.description}
                 </span>
@@ -220,7 +226,7 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
           ))}
         </fieldset>
 
-        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
+        <button className="action-primary" type="submit" disabled={busy}>
           {busy ? 'Sending…' : 'Send invitation'}
         </button>
       </form>

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import LegalLayout from './LegalLayout.js';
+import { AlertTriangle } from '../../components/icons.js';
 
 /**
  * Privacy Policy, written against India's Digital Personal Data Protection
@@ -25,7 +26,7 @@ export default function Privacy() {
       summary="We collect what we need to remind you about your medicines, and nothing else. We do not sell your data or use it for advertising. Your medication information is only shared with caregivers you personally invite, with permissions you choose, and you can withdraw that at any time. You can download or delete everything from Settings."
     >
       <div className="alert alert-warn" style={{ marginBottom: 'var(--s5)' }}>
-        <span aria-hidden="true">⚠</span>
+        <AlertTriangle size={18} />
         <div>
           <strong>Before you publish this:</strong> the fields marked
           <code> [OPERATOR NAME] </code>, <code>[REGISTERED ADDRESS]</code> and

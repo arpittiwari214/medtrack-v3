@@ -1,9 +1,8 @@
 /**
  * Account settings, including the data-rights controls.
  *
- * Export and deletion are given real estate here rather than being buried,
- * because a Privacy Policy that promises them is only honest if they are
- * actually findable.
+ * Export and deletion get real estate here rather than being buried, because a
+ * Privacy Policy that promises them is only honest if they are findable.
  */
 
 import { useState, type FormEvent } from 'react';
@@ -11,7 +10,8 @@ import { Link } from 'react-router-dom';
 import { ApiError, tokens } from '../api/client.js';
 import { accountApi, authApi } from '../api/endpoints.js';
 import { useAuth } from '../context/AuthContext.js';
-import { ErrorBanner, Modal, PageHeader, SuccessBanner } from '../components/ui.js';
+import { ErrorBanner, Modal, ScreenHeader, SuccessBanner } from '../components/ui.js';
+import { AlertTriangle, ChevronRight, Users } from '../components/icons.js';
 
 export default function Settings() {
   const { user, signOut, refresh } = useAuth();
@@ -40,10 +40,8 @@ export default function Settings() {
   }
 
   /**
-   * Download the export.
-   *
    * Fetched with the auth header and turned into a blob rather than linked
-   * directly, because a plain `<a href>` cannot carry a bearer token.
+   * directly — a plain `<a href>` cannot carry a bearer token.
    */
   async function downloadExport() {
     setError('');
@@ -68,110 +66,137 @@ export default function Settings() {
   }
 
   return (
-    <div className="stack">
-      <PageHeader title="Settings" />
+    <div>
+      <ScreenHeader eyebrow={user?.email} title="Settings" />
 
       {error && <ErrorBanner message={error} />}
       {status && <SuccessBanner message={status} />}
 
-      <form className="card stack" onSubmit={saveProfile}>
-        <h2 style={{ fontSize: '1.0625rem' }}>Your details</h2>
+      <div className="stack">
+        <form className="panel" onSubmit={saveProfile}>
+          <div className="panel-head">
+            <span className="micro">Your details</span>
+          </div>
+          <div className="panel-body stack">
+            <div className="field">
+              <label className="label" htmlFor="name">
+                Name
+              </label>
+              <input
+                id="name"
+                className="input"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
 
-        <div className="field">
-          <label className="label" htmlFor="name">
-            Name
-          </label>
-          <input
-            id="name"
-            className="input"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
+            <div className="field">
+              <span className="label">Timezone</span>
+              <p className="muted t-sm">{user?.timezone}</p>
+              <span className="field-hint">
+                Your dose times are read in this zone. It updates automatically when you sign in
+                from somewhere else.
+              </span>
+            </div>
 
-        <div className="field">
-          <span className="label">Email</span>
-          <p className="muted">{user?.email}</p>
-        </div>
+            <button className="btn btn-primary" type="submit" disabled={busy}>
+              {busy ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
 
-        <div className="field">
-          <span className="label">Timezone</span>
-          <p className="muted">{user?.timezone}</p>
-          <span className="field-hint">
-            Your dose times are interpreted in this zone. It updates automatically when you sign in
-            from somewhere else.
-          </span>
-        </div>
+        <section className="panel">
+          <div className="panel-head">
+            <span className="micro">Sharing</span>
+          </div>
+          <div className="list" style={{ border: 'none', borderRadius: 0 }}>
+            <Link className="list-row list-row-link" to="/app/caregivers">
+              <Users size={18} />
+              <span className="flex-1">Manage caregivers</span>
+              <ChevronRight size={16} />
+            </Link>
+            <Link className="list-row list-row-link" to="/care">
+              <Users size={18} />
+              <span className="flex-1">People I care for</span>
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+        </section>
 
-        <button className="btn btn-primary" type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Save changes'}
-        </button>
-      </form>
+        <section className="panel">
+          <div className="panel-head">
+            <span className="micro">Security</span>
+          </div>
+          <div className="list" style={{ border: 'none', borderRadius: 0 }}>
+            <button
+              type="button"
+              className="list-row list-row-link"
+              onClick={() => setPasswordOpen(true)}
+            >
+              <span className="flex-1">Change password</span>
+              <ChevronRight size={16} />
+            </button>
+            <button
+              type="button"
+              className="list-row list-row-link"
+              onClick={async () => {
+                await authApi.logoutAll();
+                await signOut();
+              }}
+            >
+              <span className="flex-1">Sign out of all devices</span>
+              <ChevronRight size={16} />
+            </button>
+            <button type="button" className="list-row list-row-link" onClick={signOut}>
+              <span className="flex-1">Sign out</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </section>
 
-      <section className="card stack">
-        <h2 style={{ fontSize: '1.0625rem' }}>Sharing</h2>
-        <p className="muted" style={{ fontSize: '0.9375rem' }}>
-          Manage who can see your medicines and adherence.
-        </p>
-        <Link className="btn btn-secondary" to="/app/caregivers">
-          Manage caregivers
-        </Link>
-        <Link className="btn btn-secondary" to="/care">
-          People I care for
-        </Link>
-      </section>
+        <section className="panel">
+          <div className="panel-head">
+            <span className="micro">Your data</span>
+          </div>
+          <div className="panel-body">
+            <p className="muted t-sm mb-3">
+              Under India’s Digital Personal Data Protection Act you can get a copy of everything we
+              hold about you, and have it erased.
+            </p>
+            <div className="stack stack-sm">
+              <button type="button" className="btn btn-secondary btn-block" onClick={downloadExport}>
+                Download my data
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-block"
+                onClick={() => setDeleteOpen(true)}
+              >
+                Delete my account
+              </button>
+            </div>
+          </div>
+        </section>
 
-      <section className="card stack">
-        <h2 style={{ fontSize: '1.0625rem' }}>Security</h2>
-        <button type="button" className="btn btn-secondary" onClick={() => setPasswordOpen(true)}>
-          Change password
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={async () => {
-            await authApi.logoutAll();
-            await signOut();
-          }}
-        >
-          Sign out of all devices
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={signOut}>
-          Sign out
-        </button>
-      </section>
-
-      <section className="card stack">
-        <h2 style={{ fontSize: '1.0625rem' }}>Your data</h2>
-        <p className="muted" style={{ fontSize: '0.9375rem' }}>
-          Under India’s Digital Personal Data Protection Act you can get a copy of everything we hold
-          about you, and have it erased.
-        </p>
-        <button type="button" className="btn btn-secondary" onClick={downloadExport}>
-          Download my data
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => setDeleteOpen(true)} style={{ color: 'var(--danger)' }}>
-          Delete my account
-        </button>
-      </section>
-
-      <section className="card stack">
-        <h2 style={{ fontSize: '1.0625rem' }}>Legal</h2>
-        <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 'var(--s2)' }}>
-          <li>
-            <Link to="/privacy">Privacy Policy</Link>
-          </li>
-          <li>
-            <Link to="/terms">Terms of Service</Link>
-          </li>
-          <li>
-            <Link to="/medical-disclaimer">Medical Disclaimer</Link>
-          </li>
-          <li>
-            <Link to="/cookies">Cookies</Link>
-          </li>
-        </ul>
-      </section>
+        <section className="panel">
+          <div className="panel-head">
+            <span className="micro">Legal</span>
+          </div>
+          <div className="list" style={{ border: 'none', borderRadius: 0 }}>
+            {[
+              { to: '/privacy', label: 'Privacy Policy' },
+              { to: '/terms', label: 'Terms of Service' },
+              { to: '/medical-disclaimer', label: 'Medical Disclaimer' },
+              { to: '/cookies', label: 'Cookies' },
+            ].map((item) => (
+              <Link key={item.to} className="list-row list-row-link" to={item.to}>
+                <span className="flex-1">{item.label}</span>
+                <ChevronRight size={16} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
 
       {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} />}
       {deleteOpen && <DeleteAccountModal onClose={() => setDeleteOpen(false)} onDeleted={refresh} />}
@@ -242,7 +267,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
             />
             <span className="field-hint">At least 10 characters.</span>
           </div>
-          <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
+          <button className="action-primary" type="submit" disabled={busy}>
             {busy ? 'Saving…' : 'Change password'}
           </button>
         </form>
@@ -251,7 +276,13 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDeleted: () => Promise<void> }) {
+function DeleteAccountModal({
+  onClose,
+  onDeleted,
+}: {
+  onClose: () => void;
+  onDeleted: () => Promise<void>;
+}) {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState('');
@@ -287,20 +318,18 @@ function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDel
           {error && <ErrorBanner message={error} />}
 
           <div className="alert alert-warn">
-            <span aria-hidden="true">⚠</span>
+            <AlertTriangle size={18} />
             <div>
               <strong>This erases everything.</strong>
-              <p style={{ fontSize: '0.875rem', marginTop: 'var(--s1)' }}>
+              <p className="t-xs mt-2">
                 Your medicines, your full dose history, appointments and caregiver links. Caregivers
                 lose access immediately. There is a grace period during which you can change your
-                mind by signing in again — after that it cannot be undone.
+                mind by signing in — after that it cannot be undone.
               </p>
             </div>
           </div>
 
-          <p className="muted" style={{ fontSize: '0.9375rem' }}>
-            Consider downloading your data first.
-          </p>
+          <p className="muted t-sm">Consider downloading your data first.</p>
 
           <div className="field">
             <label className="label" htmlFor="delete-password">
@@ -329,7 +358,7 @@ function DeleteAccountModal({ onClose, onDeleted }: { onClose: () => void; onDel
             />
           </div>
 
-          <button className="btn btn-danger btn-block" type="submit" disabled={busy}>
+          <button className="btn btn-danger btn-block btn-lg" type="submit" disabled={busy}>
             {busy ? 'Processing…' : 'Delete my account'}
           </button>
           <button type="button" className="btn btn-secondary btn-block" onClick={onClose}>

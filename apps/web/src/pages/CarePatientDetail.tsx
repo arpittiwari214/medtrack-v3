@@ -2,22 +2,31 @@
  * A caregiver's view of one patient.
  *
  * Read-only by design. A caregiver can see what the patient shared and be
- * alerted, but cannot mark a dose as taken on their behalf — the dose record is
+ * alerted, but cannot mark a dose taken on their behalf — the dose record is
  * the patient's account of what they did, and letting someone else write to it
  * would quietly make the adherence history untrustworthy.
  */
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { formatTime12h } from '@medtrack/shared';
+import { formatTime12h, type DoseStatus } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { careApi, type PatientOverview } from '../api/endpoints.js';
-import { ErrorBanner, PageHeader, Spinner, Stat, StatusBadge } from '../components/ui.js';
+import { ErrorBanner, MetricStrip, ScreenHeader, SectionHead, Spinner } from '../components/ui.js';
+import { AlertTriangle } from '../components/icons.js';
 
-function rateColor(rate: number): string {
-  if (rate >= 80) return 'var(--ok)';
-  if (rate >= 50) return 'var(--warn)';
-  return 'var(--danger)';
+const STATE_LABEL: Record<DoseStatus, string> = {
+  taken: 'Taken',
+  missed: 'Missed',
+  snoozed: 'Snoozed',
+  skipped: 'Skipped',
+  scheduled: 'Due',
+};
+
+function band(rate: number): string {
+  if (rate >= 80) return 'badge-ok';
+  if (rate >= 50) return 'badge-warn';
+  return 'badge-danger';
 }
 
 export default function CarePatientDetail() {
@@ -37,9 +46,7 @@ export default function CarePatientDetail() {
       } catch (caught) {
         if (!cancelled) {
           setError(
-            caught instanceof ApiError
-              ? caught.message
-              : 'Could not load this person’s information.',
+            caught instanceof ApiError ? caught.message : 'Could not load this person’s information.',
           );
         }
       } finally {
@@ -54,25 +61,31 @@ export default function CarePatientDetail() {
   }, [patientId]);
 
   if (loading) return <Spinner label="Loading" />;
+
   if (error) {
     return (
-      <main id="main" className="app-shell" style={{ padding: 'var(--s4)' }}>
-        <ErrorBanner message={error} />
-        <Link className="btn btn-secondary" to="/care" style={{ marginTop: 'var(--s4)' }}>
-          Back
-        </Link>
+      <main id="main" className="app-shell" style={{ padding: '0 var(--s4)' }}>
+        <div className="mt-5">
+          <ErrorBanner message={error} />
+          <Link className="btn btn-secondary mt-4" to="/care">
+            Back
+          </Link>
+        </div>
       </main>
     );
   }
+
   if (!data) return null;
 
-  const outstanding = data.today.upcoming.length + data.today.missed.length;
+  const doses = [...data.today.missed, ...data.today.upcoming, ...data.today.taken].sort((a, b) =>
+    a.scheduledAt.localeCompare(b.scheduledAt),
+  );
 
   return (
-    <main id="main" className="app-shell" style={{ padding: 'var(--s4)' }}>
-      <PageHeader
+    <main id="main" className="app-shell" style={{ padding: '0 var(--s4)' }}>
+      <ScreenHeader
+        eyebrow="Today at a glance"
         title={data.patient.name}
-        subtitle="Today at a glance"
         action={
           <Link className="btn btn-ghost btn-sm" to="/care">
             Back
@@ -81,75 +94,68 @@ export default function CarePatientDetail() {
       />
 
       <div className="stack">
-        <div className="row" style={{ gap: 'var(--s3)' }}>
-          <div className="stat" style={{ flex: 1 }}>
-            <div className="stat-value" style={{ color: rateColor(data.summary.ratePercent) }}>
-              {data.summary.ratePercent}%
-            </div>
-            <div className="stat-label">Last 30 days</div>
-          </div>
-          <Stat value={data.summary.streakDays} label="Day streak" />
-          <Stat value={data.today.taken.length} label="Taken today" />
-        </div>
+        <MetricStrip
+          items={[
+            { value: `${data.summary.ratePercent}%`, label: '30 days' },
+            { value: data.summary.streakDays, label: 'Streak' },
+            { value: data.today.taken.length, label: 'Taken today' },
+          ]}
+        />
 
         {data.today.missed.length > 0 && (
           <div className="alert alert-warn" role="alert">
-            <span aria-hidden="true">⚠</span>
+            <AlertTriangle size={18} />
             <div>
               <strong>
                 {data.today.missed.length} missed{' '}
                 {data.today.missed.length === 1 ? 'dose' : 'doses'} today
               </strong>
-              <p style={{ fontSize: '0.875rem' }}>It may be worth checking in.</p>
+              <p className="t-xs mt-2">It may be worth checking in.</p>
             </div>
           </div>
         )}
 
-        <section className="card">
-          <div className="card-header">
-            <h2 style={{ fontSize: '1.0625rem' }}>Today</h2>
-            <span className="subtle">{outstanding} outstanding</span>
-          </div>
+        <SectionHead title="Today" />
 
-          {[...data.today.missed, ...data.today.upcoming, ...data.today.taken].length === 0 ? (
-            <p className="muted">Nothing scheduled today.</p>
-          ) : (
-            <div className="stack" style={{ gap: 'var(--s2)' }}>
-              {[...data.today.missed, ...data.today.upcoming, ...data.today.taken].map((dose) => (
-                <div key={dose.id} className={`dose dose-${dose.status}`}>
-                  <div className="dose-time">{formatTime12h(dose.localTime)}</div>
-                  <div className="dose-body">
-                    <div className="dose-name">{dose.medicineName}</div>
-                    <StatusBadge status={dose.status} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        {doses.length === 0 ? (
+          <p className="muted t-sm">Nothing scheduled today.</p>
+        ) : (
+          <div>
+            {doses.map((dose) => (
+              <div key={dose.id} className="rail-row rail-row-static">
+                <span className="rail-time">{formatTime12h(dose.localTime)}</span>
+                <span className="rail-marker">
+                  <span className={`rail-dot rail-dot-${dose.status}`} />
+                </span>
+                <span className="rail-name">
+                  {dose.medicineName}{' '}
+                  <span className="rail-strength">{dose.medicineStrength}</span>
+                </span>
+                <span className={`rail-state rail-state-${dose.status}`}>
+                  {STATE_LABEL[dose.status]}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {data.perMedicine.length > 0 && (
-          <section className="card">
-            <div className="card-header">
-              <h2 style={{ fontSize: '1.0625rem' }}>By medicine</h2>
-            </div>
-            <div className="stack" style={{ gap: 'var(--s3)' }}>
+          <>
+            <SectionHead title="By medicine" />
+            <div className="list">
               {data.perMedicine.map((medicine) => (
-                <div key={medicine.medicineId} className="row-between">
-                  <span>{medicine.medicineName}</span>
-                  <span
-                    className="numeric"
-                    style={{ color: rateColor(medicine.ratePercent), fontWeight: 700 }}
-                  >
+                <div key={medicine.medicineId} className="list-row">
+                  <span className="flex-1 truncate">{medicine.medicineName}</span>
+                  <span className={`badge ${band(medicine.ratePercent)}`}>
                     {medicine.ratePercent}%
                   </span>
                 </div>
               ))}
             </div>
-          </section>
+          </>
         )}
 
-        <p className="subtle">
+        <p className="subtle mt-4">
           You are seeing only what {data.patient.name} chose to share. They can change or withdraw
           this at any time.
         </p>

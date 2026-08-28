@@ -1,0 +1,123 @@
+/* ==========================================================================
+   Landing page.
+
+   Rebuilt away from the centred-hero-plus-three-icon-cards layout, which is the
+   single most recognisable generated-site shape. Three changes:
+
+   1. The hero is left-aligned and sits beside a real preview of the product.
+      Showing the schedule people will actually use is more convincing than
+      three cards describing it, and it is what the app genuinely looks like.
+   2. Features are rows separated by rules, not boxes. A list reads as
+      information; a grid of equal cards reads as filler.
+   3. Nothing is centred except the disclaimer, so the page has a reading edge.
+   ========================================================================== */
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s7);
+  padding: var(--s7) 0 var(--s8);
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .hero {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: var(--s8);
+  }
+}
+
+.hero h1 {
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  margin: var(--s3) 0 var(--s4);
+  max-width: 16ch;
+}
+
+.hero-lede {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--text-2);
+  max-width: 52ch;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-top: var(--s5);
+}
+
+/* ── Product preview ────────────────────────────────────────────────────── */
+
+/* A real fragment of the app rather than an illustration: the same rail, the
+   same type, the same states. If the preview drifts from the product, the
+   product is the one that is wrong. */
+.preview {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.preview-chrome {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.preview-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.preview-body {
+  padding: var(--s4);
+}
+
+/* ── Feature rows ───────────────────────────────────────────────────────── */
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--s4);
+  padding: var(--s5) 0;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+}
+
+@media (min-width: 720px) {
+  .feature-row {
+    grid-template-columns: 28px 15rem minmax(0, 1fr);
+    align-items: baseline;
+  }
+}
+
+.feature-row:last-child {
+  border-bottom: none;
+}
+
+.feature-row svg {
+  color: var(--brand);
+  margin-top: 2px;
+}
+
+.feature-name {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.feature-body {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  max-width: 56ch;
+}

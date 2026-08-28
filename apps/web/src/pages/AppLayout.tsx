@@ -1,8 +1,8 @@
 /**
  * Shell for the signed-in patient app.
  *
- * Holds the unacknowledged-alert count so the nav badge is consistent across
- * screens, and offers a deletion-pending banner — someone who scheduled their
+ * Holds the unacknowledged-alert count so the nav badge stays consistent across
+ * screens, and surfaces a deletion-pending banner — someone who scheduled their
  * account for deletion and then signed in probably wants to undo it, and that
  * should not be buried in settings.
  */
@@ -12,6 +12,7 @@ import { Link, Outlet } from 'react-router-dom';
 import { accountApi, alertsApi } from '../api/endpoints.js';
 import { useAuth } from '../context/AuthContext.js';
 import { BottomNav } from '../components/ui.js';
+import { AlertTriangle } from '../components/icons.js';
 
 export default function AppLayout() {
   const { user, refresh } = useAuth();
@@ -31,7 +32,9 @@ export default function AppLayout() {
     void loadAlerts();
   }, [loadAlerts]);
 
-  const deletionPending = Boolean((user as { deletionRequestedAt?: string | null })?.deletionRequestedAt);
+  const deletionPending = Boolean(
+    (user as { deletionRequestedAt?: string | null })?.deletionRequestedAt,
+  );
 
   async function cancelDeletion() {
     setCancelling(true);
@@ -45,19 +48,18 @@ export default function AppLayout() {
 
   return (
     <div className="app-shell">
-      <main id="main" style={{ padding: 'var(--s4)' }}>
+      <main id="main" style={{ padding: '0 var(--s4)' }}>
         {deletionPending && (
-          <div className="alert alert-warn" role="alert" style={{ marginBottom: 'var(--s4)' }}>
-            <span aria-hidden="true">⚠</span>
-            <div style={{ flex: 1 }}>
+          <div className="alert alert-warn mt-4" role="alert">
+            <AlertTriangle size={18} />
+            <div className="flex-1">
               <strong>Your account is scheduled for deletion.</strong>
-              <p style={{ fontSize: '0.875rem', marginTop: 'var(--s1)' }}>
+              <p className="t-xs mt-2">
                 All your data will be permanently erased when the grace period ends.
               </p>
               <button
                 type="button"
-                className="btn btn-sm btn-secondary"
-                style={{ marginTop: 'var(--s3)' }}
+                className="btn btn-sm btn-secondary mt-3"
                 onClick={cancelDeletion}
                 disabled={cancelling}
               >
@@ -69,7 +71,7 @@ export default function AppLayout() {
 
         <Outlet context={{ reloadAlerts: loadAlerts }} />
 
-        <p className="subtle" style={{ textAlign: 'center', marginTop: 'var(--s7)' }}>
+        <p className="subtle center" style={{ marginTop: 'var(--s7)' }}>
           MedTrack is a reminder tool, not a medical device.{' '}
           <Link to="/medical-disclaimer">What that means</Link>
         </p>

@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.js';
+import { ErrorBanner } from '../components/ui.js';
+import { Pill } from '../components/icons.js';
 
 /** The browser's own zone is the right default and is almost always correct. */
 function detectTimeZone(): string {
@@ -43,8 +45,6 @@ export default function Signup() {
       await signUp({
         ...form,
         timezone: detectTimeZone(),
-        // One checkbox covers both documents, and both consents are recorded
-        // server-side with the version agreed to.
         acceptedTerms: true,
         acceptedPrivacy: true,
         marketingEmail,
@@ -53,9 +53,7 @@ export default function Signup() {
     } catch (caught) {
       if (caught instanceof ApiError) {
         setError(caught.message);
-        setFieldErrors(
-          Object.fromEntries(caught.issues.map((issue) => [issue.path, issue.message])),
-        );
+        setFieldErrors(Object.fromEntries(caught.issues.map((i) => [i.path, i.message])));
       } else {
         setError('Could not reach the server. Check your connection and try again.');
       }
@@ -65,21 +63,17 @@ export default function Signup() {
   }
 
   return (
-    <main id="main" className="container" style={{ maxWidth: 460, paddingBlock: 'var(--s7)' }}>
-      <div className="stack" style={{ textAlign: 'center', marginBottom: 'var(--s5)' }}>
-        <Link to="/" style={{ textDecoration: 'none', fontSize: '2rem' }} aria-label="MedTrack home">
-          💊
+    <main id="main" className="auth-shell">
+      <div className="auth-head">
+        <Link to="/" className="brand-mark mb-4" aria-label="MedTrack home">
+          <Pill size={20} />
+          MedTrack
         </Link>
-        <h1 style={{ fontSize: '1.5rem' }}>Create your account</h1>
+        <h1 className="t-title">Create your account</h1>
       </div>
 
-      <form className="card stack" onSubmit={handleSubmit} noValidate>
-        {error && (
-          <div className="alert alert-error" role="alert">
-            <span aria-hidden="true">⚠</span>
-            <span>{error}</span>
-          </div>
-        )}
+      <form className="panel panel-pad stack" onSubmit={handleSubmit} noValidate>
+        {error && <ErrorBanner message={error} />}
 
         <div className="field">
           <label className="label" htmlFor="name">
@@ -145,7 +139,7 @@ export default function Signup() {
             checked={acceptedTerms}
             onChange={(event) => setAcceptedTerms(event.target.checked)}
           />
-          <span style={{ fontSize: '0.9375rem' }}>
+          <span className="t-sm">
             I agree to the <Link to="/terms" target="_blank">Terms of Service</Link> and{' '}
             <Link to="/privacy" target="_blank">Privacy Policy</Link>, including MedTrack storing
             information about my medicines so it can remind me.
@@ -158,7 +152,7 @@ export default function Signup() {
             checked={marketingEmail}
             onChange={(event) => setMarketingEmail(event.target.checked)}
           />
-          <span style={{ fontSize: '0.9375rem' }} className="muted">
+          <span className="t-sm muted">
             Occasional email about new features. Entirely optional, and you can stop it any time.
           </span>
         </label>
@@ -168,7 +162,7 @@ export default function Signup() {
         </button>
       </form>
 
-      <p style={{ textAlign: 'center', marginTop: 'var(--s5)' }} className="muted">
+      <p className="center muted t-sm mt-5">
         Already have an account? <Link to="/login">Sign in</Link>
       </p>
     </main>

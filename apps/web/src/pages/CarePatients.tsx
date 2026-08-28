@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api/client.js';
 import { careApi, type PatientEntry } from '../api/endpoints.js';
-import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/ui.js';
+import { EmptyState, ErrorBanner, ScreenHeader, Spinner } from '../components/ui.js';
+import { ChevronRight, Users } from '../components/icons.js';
 
 export default function CarePatients() {
   const [patients, setPatients] = useState<PatientEntry[]>([]);
@@ -34,10 +35,10 @@ export default function CarePatients() {
   if (loading) return <Spinner label="Loading" />;
 
   return (
-    <main id="main" className="app-shell" style={{ padding: 'var(--s4)' }}>
-      <PageHeader
+    <main id="main" className="app-shell" style={{ padding: '0 var(--s4)' }}>
+      <ScreenHeader
+        eyebrow="Only what each person chose to share"
         title="People I care for"
-        subtitle="Only what each person has chosen to share"
         action={
           <Link className="btn btn-ghost btn-sm" to="/app">
             My app
@@ -49,24 +50,23 @@ export default function CarePatients() {
 
       {patients.length === 0 ? (
         <EmptyState
-          icon="👥"
+          icon={<Users size={22} />}
           title="Nobody has added you yet"
-          description="When someone invites you as their caregiver and you accept, they will appear here."
+          description="When someone invites you as their caregiver and you accept, they appear here."
         />
       ) : (
-        <div className="stack">
+        <div className="list">
           {patients.map((patient) => (
             <Link
               key={patient.careLinkId}
               to={`/care/patients/${patient.patientId}`}
-              className="card card-tight row-between"
-              style={{ textDecoration: 'none', color: 'inherit' }}
+              className="list-row list-row-link"
             >
-              <div>
-                <h2 style={{ fontSize: '1.0625rem' }}>{patient.name}</h2>
-                <p className="subtle">{patient.relation}</p>
+              <div className="flex-1">
+                <div className="list-title truncate">{patient.name}</div>
+                <div className="subtle">{patient.relation}</div>
               </div>
-              <span aria-hidden="true">→</span>
+              <ChevronRight size={18} />
             </Link>
           ))}
         </div>

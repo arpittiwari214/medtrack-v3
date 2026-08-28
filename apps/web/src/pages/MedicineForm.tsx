@@ -13,7 +13,7 @@ import type { MedicineForm as MedicineFormType, ScheduleKind, Weekday } from '@m
 import { todayIn } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { medicinesApi } from '../api/endpoints.js';
-import { ErrorBanner, PageHeader, Spinner } from '../components/ui.js';
+import { ErrorBanner, ScreenHeader, Spinner } from '../components/ui.js';
 
 const FORMS: { value: MedicineFormType; label: string }[] = [
   { value: 'tablet', label: 'Tablet' },
@@ -182,11 +182,11 @@ export default function MedicineForm() {
 
   return (
     <form className="stack" onSubmit={handleSubmit} noValidate>
-      <PageHeader title={isEdit ? 'Edit medicine' : 'Add a medicine'} />
+      <ScreenHeader title={isEdit ? 'Edit medicine' : 'Add a medicine'} />
 
       {error && <ErrorBanner message={error} />}
 
-      <section className="card stack">
+      <section className="panel panel-pad stack">
         <div className="field">
           <label className="label" htmlFor="name">
             Medicine name
@@ -251,8 +251,8 @@ export default function MedicineForm() {
         </div>
       </section>
 
-      <section className="card stack">
-        <h2 style={{ fontSize: '1.0625rem' }}>When do you take it?</h2>
+      <section className="panel panel-pad stack">
+        <h2 className="t-lg">When do you take it?</h2>
 
         <div className="field">
           <label className="label" htmlFor="kind">
@@ -309,8 +309,8 @@ export default function MedicineForm() {
         )}
 
         {kind === 'cyclic' && (
-          <div className="row" style={{ gap: 'var(--s3)' }}>
-            <div className="field" style={{ flex: 1 }}>
+          <div className="split">
+            <div className="field flex-1">
               <label className="label" htmlFor="on-days">
                 Days on
               </label>
@@ -323,7 +323,7 @@ export default function MedicineForm() {
                 onChange={(event) => setCycleOnDays(Number(event.target.value))}
               />
             </div>
-            <div className="field" style={{ flex: 1 }}>
+            <div className="field flex-1">
               <label className="label" htmlFor="off-days">
                 Days off
               </label>
@@ -379,8 +379,8 @@ export default function MedicineForm() {
           </div>
         )}
 
-        <div className="row" style={{ gap: 'var(--s3)' }}>
-          <div className="field" style={{ flex: 1 }}>
+        <div className="split">
+          <div className="field flex-1">
             <label className="label" htmlFor="start">
               Start date
             </label>
@@ -393,7 +393,7 @@ export default function MedicineForm() {
               onChange={(event) => setStartDate(event.target.value)}
             />
           </div>
-          <div className="field" style={{ flex: 1 }}>
+          <div className="field flex-1">
             <label className="label" htmlFor="end">
               End date (optional)
             </label>
@@ -408,7 +408,7 @@ export default function MedicineForm() {
         </div>
       </section>
 
-      <section className="card stack">
+      <section className="panel panel-pad stack">
         <label className="checkbox-row">
           <input
             type="checkbox"
@@ -483,11 +483,15 @@ export default function MedicineForm() {
         )}
       </section>
 
-      <div className="row" style={{ gap: 'var(--s3)' }}>
-        <button className="btn btn-primary btn-lg" type="submit" disabled={busy} style={{ flex: 1 }}>
+      <div className="stack stack-sm">
+        <button className="action-primary" type="submit" disabled={busy}>
           {busy ? 'Saving…' : isEdit ? 'Save changes' : 'Add medicine'}
         </button>
-        <button type="button" className="btn btn-secondary btn-lg" onClick={() => navigate(-1)}>
+        <button
+          type="button"
+          className="btn btn-secondary btn-block"
+          onClick={() => navigate(-1)}
+        >
           Cancel
         </button>
       </div>

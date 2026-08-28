@@ -1,10 +1,10 @@
 /**
  * Accepting a caregiver invitation.
  *
- * The invitation is readable while signed out so the person can see exactly
- * what they are being asked to accept before creating an account. The server
- * still requires the accepting account's email to match the invited address, so
- * a forwarded link grants nothing.
+ * Readable while signed out, so the person can see exactly what they are being
+ * asked to accept before creating an account. The server still requires the
+ * accepting account's email to match the invited address, so a forwarded link
+ * grants nothing.
  */
 
 import { useEffect, useState } from 'react';
@@ -14,6 +14,7 @@ import { ApiError } from '../api/client.js';
 import { careApi } from '../api/endpoints.js';
 import { useAuth } from '../context/AuthContext.js';
 import { ErrorBanner, Spinner, SuccessBanner } from '../components/ui.js';
+import { Check, Info, Pill } from '../components/icons.js';
 
 const PERMISSION_LABELS: Record<keyof CarePermissions, string> = {
   viewMedicines: 'See their medicines',
@@ -56,9 +57,7 @@ export default function AcceptInvite() {
         if (!cancelled) setInvitation(found);
       } catch (caught) {
         if (!cancelled) {
-          setError(
-            caught instanceof ApiError ? caught.message : 'Could not load that invitation.',
-          );
+          setError(caught instanceof ApiError ? caught.message : 'Could not load that invitation.');
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -88,33 +87,33 @@ export default function AcceptInvite() {
   if (loading || authLoading) return <Spinner label="Loading invitation" />;
 
   return (
-    <main id="main" className="container" style={{ maxWidth: 480, paddingBlock: 'var(--s7)' }}>
-      <div className="stack" style={{ textAlign: 'center', marginBottom: 'var(--s5)' }}>
-        <span style={{ fontSize: '2rem' }} aria-hidden="true">
-          💊
+    <main id="main" className="auth-shell">
+      <div className="auth-head">
+        <span className="brand-mark mb-4">
+          <Pill size={20} />
+          MedTrack
         </span>
-        <h1 style={{ fontSize: '1.5rem' }}>A caregiver invitation</h1>
+        <h1 className="t-title">A caregiver invitation</h1>
       </div>
 
       {error && <ErrorBanner message={error} />}
       {result && <SuccessBanner message={result} />}
 
       {invitation && !result && (
-        <div className="card stack">
-          <p style={{ fontSize: '1.0625rem' }}>
+        <div className="panel panel-pad stack">
+          <p className="t-base">
             <strong>{invitation.patientName}</strong> would like you to support them on MedTrack as
             their <strong>{invitation.relation}</strong>.
           </p>
 
           <div>
-            <h2 className="eyebrow" style={{ marginBottom: 'var(--s2)' }}>
-              You would be able to
-            </h2>
-            <ul style={{ paddingLeft: 'var(--s5)' }}>
+            <p className="micro mb-3">You would be able to</p>
+            <ul className="stack stack-sm" style={{ listStyle: 'none', padding: 0 }}>
               {(Object.keys(PERMISSION_LABELS) as (keyof CarePermissions)[])
                 .filter((key) => invitation.permissions[key])
                 .map((key) => (
-                  <li key={key} className="muted">
+                  <li key={key} className="row muted t-sm" style={{ gap: 'var(--s2)' }}>
+                    <Check size={15} />
                     {PERMISSION_LABELS[key]}
                   </li>
                 ))}
@@ -129,7 +128,7 @@ export default function AcceptInvite() {
             <>
               <button
                 type="button"
-                className="btn btn-primary btn-block btn-lg"
+                className="action-primary"
                 onClick={() => respond(true)}
                 disabled={busy}
               >
@@ -149,7 +148,7 @@ export default function AcceptInvite() {
               {/* The account must be the invited address, so say so before they
                   sign up with a different one and hit a confusing 403. */}
               <div className="alert alert-info">
-                <span aria-hidden="true">ℹ</span>
+                <Info size={18} />
                 <span>
                   Sign in — or create an account with the address this invitation was sent to — to
                   accept it.
@@ -171,8 +170,8 @@ export default function AcceptInvite() {
       )}
 
       {!invitation && !loading && (
-        <div className="card stack">
-          <p className="muted">
+        <div className="panel panel-pad stack">
+          <p className="muted t-sm">
             This invitation may have expired, already been used, or been withdrawn.
           </p>
           <Link className="btn btn-secondary btn-block" to="/">

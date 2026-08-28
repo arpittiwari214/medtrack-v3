@@ -1,20 +1,29 @@
 /**
- * Small shared UI pieces.
+ * Shared UI pieces.
  *
- * Status is deliberately never communicated by colour alone — every badge
- * carries a word and a glyph, because red/green is precisely the distinction a
- * meaningful share of people cannot make, and this app uses it to say "taken"
- * versus "missed".
+ * Status is never communicated by colour alone — every badge carries a word,
+ * because red/green is precisely the distinction a meaningful share of people
+ * cannot make, and this app uses it for "taken" versus "missed".
  */
 
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { DoseStatus } from '@medtrack/shared';
-import { Calendar, Chart, Home, Pill, Settings } from './icons.js';
+import {
+  AlertTriangle,
+  Calendar,
+  Chart,
+  Check,
+  Close,
+  Home,
+  Info,
+  Pill,
+  Settings,
+} from './icons.js';
 
 export function Spinner({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="row" style={{ justifyContent: 'center', padding: 'var(--s6)' }}>
+    <div className="row center" style={{ justifyContent: 'center', padding: 'var(--s7)' }}>
       <div className="spinner" />
       <span className="sr-only">{label}</span>
     </div>
@@ -23,12 +32,12 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
 
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="alert alert-error" role="alert">
-      <span aria-hidden="true">⚠</span>
-      <div style={{ flex: 1 }}>
+    <div className="alert alert-error mb-3" role="alert">
+      <AlertTriangle size={18} />
+      <div className="flex-1">
         <div>{message}</div>
         {onRetry && (
-          <button type="button" className="btn btn-sm btn-secondary" style={{ marginTop: 'var(--s3)' }} onClick={onRetry}>
+          <button type="button" className="btn btn-sm btn-secondary mt-3" onClick={onRetry}>
             Try again
           </button>
         )}
@@ -40,8 +49,17 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
 export function SuccessBanner({ message }: { message: string }) {
   return (
     <div className="alert alert-ok" role="status">
-      <span aria-hidden="true">✓</span>
+      <Check size={18} />
       <div>{message}</div>
+    </div>
+  );
+}
+
+export function InfoBanner({ children }: { children: ReactNode }) {
+  return (
+    <div className="alert alert-info">
+      <Info size={18} />
+      <div>{children}</div>
     </div>
   );
 }
@@ -52,18 +70,16 @@ export function EmptyState({
   description,
   action,
 }: {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
   action?: ReactNode;
 }) {
   return (
     <div className="empty">
-      <div className="empty-icon" aria-hidden="true">
-        {icon}
-      </div>
-      <h3 style={{ marginBottom: 'var(--s2)', fontSize: '1.125rem' }}>{title}</h3>
-      <p className="muted" style={{ marginBottom: 'var(--s5)', maxWidth: '42ch', marginInline: 'auto' }}>
+      <div className="empty-mark">{icon}</div>
+      <h3 className="t-lg">{title}</h3>
+      <p className="muted t-sm mt-2 mb-4" style={{ maxWidth: '40ch', marginInline: 'auto' }}>
         {description}
       </p>
       {action}
@@ -71,50 +87,59 @@ export function EmptyState({
   );
 }
 
-const STATUS_META: Record<DoseStatus, { label: string; className: string; glyph: string }> = {
-  taken: { label: 'Taken', className: 'badge-ok', glyph: '✓' },
-  missed: { label: 'Missed', className: 'badge-danger', glyph: '✕' },
-  snoozed: { label: 'Snoozed', className: 'badge-warn', glyph: '⏰' },
-  skipped: { label: 'Skipped', className: 'badge-neutral', glyph: '–' },
-  scheduled: { label: 'Due', className: 'badge-info', glyph: '•' },
+const STATUS_META: Record<DoseStatus, { label: string; className: string }> = {
+  taken: { label: 'Taken', className: 'badge-ok' },
+  missed: { label: 'Missed', className: 'badge-danger' },
+  snoozed: { label: 'Snoozed', className: 'badge-warn' },
+  skipped: { label: 'Skipped', className: 'badge-neutral' },
+  scheduled: { label: 'Due', className: 'badge-info' },
 };
 
 export function StatusBadge({ status }: { status: DoseStatus }) {
   const meta = STATUS_META[status];
-  return (
-    <span className={`badge ${meta.className}`}>
-      <span aria-hidden="true">{meta.glyph}</span>
-      {meta.label}
-    </span>
-  );
+  return <span className={`badge ${meta.className}`}>{meta.label}</span>;
 }
 
-export function Stat({ value, label }: { value: string | number; label: string }) {
+/** A metric strip: several readings in one bordered group, not floating cards. */
+export function MetricStrip({ items }: { items: { value: string | number; label: string }[] }) {
   return (
-    <div className="stat">
-      <div className="stat-value">{value}</div>
-      <div className="stat-label">{label}</div>
+    <div className="metric-strip">
+      {items.map((item) => (
+        <div key={item.label} className="metric">
+          <div className="metric-value numeric">{item.value}</div>
+          <div className="metric-label">{item.label}</div>
+        </div>
+      ))}
     </div>
   );
 }
 
-export function PageHeader({
+export function ScreenHeader({
+  eyebrow,
   title,
-  subtitle,
   action,
 }: {
+  eyebrow?: string;
   title: string;
-  subtitle?: string;
   action?: ReactNode;
 }) {
   return (
-    <header className="row-between" style={{ marginBottom: 'var(--s5)' }}>
+    <header className="screen-head">
       <div>
-        <h1 style={{ fontSize: '1.5rem' }}>{title}</h1>
-        {subtitle && <p className="muted" style={{ fontSize: '0.9375rem' }}>{subtitle}</p>}
+        {eyebrow && <p className="micro">{eyebrow}</p>}
+        <h1 className="t-title mt-2">{title}</h1>
       </div>
       {action}
     </header>
+  );
+}
+
+export function SectionHead({ title, aside }: { title: string; aside?: ReactNode }) {
+  return (
+    <div className="section-head">
+      <h2 className="micro">{title}</h2>
+      {aside}
+    </div>
   );
 }
 
@@ -147,10 +172,8 @@ export function BottomNav({ alertCount = 0 }: { alertCount?: number }) {
 }
 
 /**
- * A dismissible modal.
- *
- * Closing on backdrop click and on Escape are both wired, because a modal that
- * can only be dismissed by finding the right button is a trap on a small screen.
+ * A dismissible modal. Closing on backdrop click and on Escape are both wired —
+ * a modal you can only leave by finding the right button is a trap on a phone.
  */
 export function Modal({
   title,
@@ -175,10 +198,10 @@ export function Modal({
       }}
     >
       <div className="sheet">
-        <div className="row-between" style={{ marginBottom: 'var(--s4)' }}>
-          <h2 style={{ fontSize: '1.25rem' }}>{title}</h2>
+        <div className="row-between mb-4">
+          <h2 className="t-lg">{title}</h2>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
-            ✕
+            <Close size={18} />
           </button>
         </div>
         {children}

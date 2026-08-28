@@ -2,14 +2,15 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { formatTime12h, todayIn, type Appointment, type AppointmentKind } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { appointmentsApi } from '../api/endpoints.js';
-import { EmptyState, ErrorBanner, Modal, PageHeader, Spinner } from '../components/ui.js';
+import { EmptyState, ErrorBanner, Modal, ScreenHeader, Spinner } from '../components/ui.js';
+import { AlertTriangle, Calendar, Plus } from '../components/icons.js';
 
-const KINDS: { value: AppointmentKind; label: string; icon: string }[] = [
-  { value: 'doctor', label: 'Doctor visit', icon: '🩺' },
-  { value: 'lab_test', label: 'Lab test', icon: '🧪' },
-  { value: 'procedure', label: 'Procedure', icon: '🏥' },
-  { value: 'vaccination', label: 'Vaccination', icon: '💉' },
-  { value: 'other', label: 'Other', icon: '📌' },
+const KINDS: { value: AppointmentKind; label: string }[] = [
+  { value: 'doctor', label: 'Doctor visit' },
+  { value: 'lab_test', label: 'Lab test' },
+  { value: 'procedure', label: 'Procedure' },
+  { value: 'vaccination', label: 'Vaccination' },
+  { value: 'other', label: 'Other' },
 ];
 
 function browserZone(): string {
@@ -64,109 +65,109 @@ export default function Appointments() {
   }
 
   return (
-    <div className="stack">
-      <PageHeader
+    <div>
+      <ScreenHeader
+        eyebrow="Visits and lab tests"
         title="Appointments"
-        subtitle="Visits and lab tests"
         action={
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setFormOpen(true)}>
-            + Add
+            <Plus size={16} />
+            Add
           </button>
         }
       />
 
-      <div className="row" role="group" aria-label="Which appointments">
-        <button
-          type="button"
-          className={`btn btn-sm ${scope === 'upcoming' ? 'btn-primary' : 'btn-secondary'}`}
-          aria-pressed={scope === 'upcoming'}
-          onClick={() => setScope('upcoming')}
-        >
+      <div className="segmented" role="group" aria-label="Which appointments">
+        <button type="button" aria-pressed={scope === 'upcoming'} onClick={() => setScope('upcoming')}>
           Upcoming
         </button>
-        <button
-          type="button"
-          className={`btn btn-sm ${scope === 'past' ? 'btn-primary' : 'btn-secondary'}`}
-          aria-pressed={scope === 'past'}
-          onClick={() => setScope('past')}
-        >
+        <button type="button" aria-pressed={scope === 'past'} onClick={() => setScope('past')}>
           Past
         </button>
       </div>
 
       {error && <ErrorBanner message={error} onRetry={() => load(scope)} />}
 
-      {loading ? (
-        <Spinner label="Loading appointments" />
-      ) : appointments.length === 0 ? (
-        <EmptyState
-          icon="📅"
-          title={scope === 'upcoming' ? 'Nothing coming up' : 'Nothing in the past'}
-          description="Add a doctor visit or lab test and MedTrack will remind you the day before and an hour ahead."
-          action={
-            scope === 'upcoming' ? (
-              <button type="button" className="btn btn-primary" onClick={() => setFormOpen(true)}>
-                Add an appointment
-              </button>
-            ) : undefined
-          }
-        />
-      ) : (
-        appointments.map((appointment) => {
-          const kind = KINDS.find((option) => option.value === appointment.kind);
-          return (
-            <article key={appointment.id} className="card card-tight stack" style={{ gap: 'var(--s2)' }}>
-              <div className="row-between">
-                <div className="row" style={{ gap: 'var(--s3)' }}>
-                  <span style={{ fontSize: '1.5rem' }} aria-hidden="true">
-                    {kind?.icon ?? '📌'}
-                  </span>
-                  <div>
-                    <h2 style={{ fontSize: '1.0625rem' }}>{appointment.title}</h2>
-                    <p className="subtle">
-                      {appointment.localDate} at {formatTime12h(appointment.localTime)}
-                    </p>
+      <div className="mt-4">
+        {loading ? (
+          <Spinner label="Loading appointments" />
+        ) : appointments.length === 0 ? (
+          <EmptyState
+            icon={<Calendar size={22} />}
+            title={scope === 'upcoming' ? 'Nothing coming up' : 'Nothing in the past'}
+            description="Add a doctor visit or lab test and MedTrack reminds you the day before and an hour ahead."
+            action={
+              scope === 'upcoming' ? (
+                <button type="button" className="btn btn-primary" onClick={() => setFormOpen(true)}>
+                  Add an appointment
+                </button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="stack">
+            {appointments.map((appointment) => {
+              const kind = KINDS.find((option) => option.value === appointment.kind);
+              return (
+                <article key={appointment.id} className="panel">
+                  <div className="panel-head">
+                    <span className="micro">{kind?.label ?? 'Appointment'}</span>
+                    <span className="t-xs muted numeric">
+                      {appointment.localDate} · {formatTime12h(appointment.localTime)}
+                    </span>
                   </div>
-                </div>
-                {appointment.status !== 'scheduled' && (
-                  <span
-                    className={`badge ${appointment.status === 'completed' ? 'badge-ok' : 'badge-neutral'}`}
-                  >
-                    {appointment.status}
-                  </span>
-                )}
-              </div>
 
-              {appointment.provider && <p className="subtle">With {appointment.provider}</p>}
-              {appointment.location && <p className="subtle">📍 {appointment.location}</p>}
+                  <div className="panel-body">
+                    <div className="row-between">
+                      <h2 className="t-lg flex-1 truncate">{appointment.title}</h2>
+                      {appointment.status !== 'scheduled' && (
+                        <span
+                          className={`badge ${appointment.status === 'completed' ? 'badge-ok' : 'badge-neutral'}`}
+                        >
+                          {appointment.status}
+                        </span>
+                      )}
+                    </div>
 
-              {appointment.requiresFasting && (
-                <div className="alert alert-warn" style={{ padding: 'var(--s3)', fontSize: '0.875rem' }}>
-                  <span aria-hidden="true">⚠</span>
-                  <span>Fasting required — do not eat beforehand.</span>
-                </div>
-              )}
+                    {appointment.provider && (
+                      <p className="subtle mt-2">With {appointment.provider}</p>
+                    )}
+                    {appointment.location && <p className="subtle">{appointment.location}</p>}
 
-              {appointment.notes && <p className="subtle">{appointment.notes}</p>}
+                    {appointment.requiresFasting && (
+                      <div className="alert alert-warn mt-3">
+                        <AlertTriangle size={18} />
+                        <span>Fasting required — do not eat beforehand.</span>
+                      </div>
+                    )}
 
-              {appointment.status === 'scheduled' && (
-                <div className="row" style={{ gap: 'var(--s2)' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => markComplete(appointment)}
-                  >
-                    Mark done
-                  </button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => remove(appointment)}>
-                    Delete
-                  </button>
-                </div>
-              )}
-            </article>
-          );
-        })
-      )}
+                    {appointment.notes && <p className="subtle mt-3">{appointment.notes}</p>}
+
+                    {appointment.status === 'scheduled' && (
+                      <div className="row mt-4" style={{ gap: 'var(--s2)' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => markComplete(appointment)}
+                        >
+                          Mark done
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => remove(appointment)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {formOpen && (
         <AppointmentModal
@@ -256,27 +257,27 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
           />
         </div>
 
-        <div className="row" style={{ gap: 'var(--s3)' }}>
-          <div className="field" style={{ flex: 1 }}>
+        <div className="split">
+          <div className="field">
             <label className="label" htmlFor="date">
               Date
             </label>
             <input
               id="date"
-              className="input"
+              className="input numeric"
               type="date"
               required
               value={localDate}
               onChange={(event) => setLocalDate(event.target.value)}
             />
           </div>
-          <div className="field" style={{ flex: 1 }}>
+          <div className="field">
             <label className="label" htmlFor="time">
               Time
             </label>
             <input
               id="time"
-              className="input"
+              className="input numeric"
               type="time"
               required
               value={localTime}
@@ -328,10 +329,10 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
             checked={requiresFasting}
             onChange={(event) => setRequiresFasting(event.target.checked)}
           />
-          <span>Fasting required beforehand</span>
+          <span className="t-sm">Fasting required beforehand</span>
         </label>
 
-        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
+        <button className="action-primary" type="submit" disabled={busy}>
           {busy ? 'Saving…' : 'Add appointment'}
         </button>
       </form>
