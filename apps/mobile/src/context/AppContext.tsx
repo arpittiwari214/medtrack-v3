@@ -18,13 +18,14 @@ import {
   type ReactNode,
 } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
-import type { DoseAction, DoseEvent, Medicine, User } from '@medtrack/shared';
+import type { Appointment, DoseAction, DoseEvent, Medicine, User } from '@medtrack/shared';
 import { api, setSessionEndedHandler } from '../api/client';
 import { clearTokens, getAccessToken, setTokens } from '../storage/secure';
 import {
   actOnDoseLocally,
   clearAll,
   readCache,
+  updateAppointmentLocally,
   type CachedData,
 } from '../storage/offline';
 import { sync } from '../sync/index';
@@ -45,6 +46,7 @@ interface AppContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   actOnDose: (doseId: string, action: DoseAction, snoozeMinutes?: number) => Promise<DoseEvent>;
+  updateAppointment: (appointmentId: string, patch: Partial<Appointment>) => Promise<Appointment>;
   refresh: () => Promise<void>;
 }
 
@@ -183,6 +185,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [runSync],
   );
 
+  const updateAppointment = useCallback(
+    async (appointmentId: string, patch: Partial<Appointment>) => {
+      const { cache: nextCache, appointment } = await updateAppointmentLocally(appointmentId, patch);
+      setCache(nextCache);
+      // Fire and forget — the change is already durable in the outbox, so the
+      // UI must not wait on the network to feel responsive.
+      void runSync();
+      return appointment;
+    },
+    [runSync],
+  );
+
   // Keep the OS notification schedule aligned with the medicine list.
   useEffect(() => {
     if (!user || cache.medicines.length === 0) return;
@@ -199,9 +213,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       actOnDose,
+      updateAppointment,
       refresh: runSync,
     }),
-    [user, loading, cache, syncing, lastSyncError, signIn, signOut, actOnDose, runSync],
+    [user, loading, cache, syncing, lastSyncError, signIn, signOut, actOnDose, updateAppointment, runSync],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

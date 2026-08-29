@@ -18,8 +18,10 @@ import { AppProvider, useApp } from './src/context/AppContext';
 import SignInScreen from './src/screens/SignInScreen';
 import TodayScreen from './src/screens/TodayScreen';
 import MedicinesScreen from './src/screens/MedicinesScreen';
+import InsightsScreen from './src/screens/InsightsScreen';
+import AppointmentsScreen from './src/screens/AppointmentsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
-import { Home, Pill, Settings as SettingsIcon } from './src/components/icons';
+import { Calendar, Chart, Home, Pill, Settings as SettingsIcon } from './src/components/icons';
 import { spacing, staticPalette, type, useTheme } from './src/theme';
 
 const Tab = createBottomTabNavigator();
@@ -52,6 +54,16 @@ function Tabs() {
         name="Medicines"
         component={MedicinesScreen}
         options={{ tabBarIcon: ({ color }) => <Pill size={22} color={color} /> }}
+      />
+      <Tab.Screen
+        name="Insights"
+        component={InsightsScreen}
+        options={{ tabBarIcon: ({ color }) => <Chart size={22} color={color} /> }}
+      />
+      <Tab.Screen
+        name="Visits"
+        component={AppointmentsScreen}
+        options={{ tabBarIcon: ({ color }) => <Calendar size={22} color={color} /> }}
       />
       <Tab.Screen
         name="Settings"

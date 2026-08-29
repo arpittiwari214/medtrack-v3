@@ -199,6 +199,47 @@ export async function actOnDoseLocally(
   return { cache: nextCache, dose: updated };
 }
 
+/**
+ * Apply an appointment change locally and queue it.
+ *
+ * Simpler than the dose path: an appointment has no state machine and no
+ * asymmetry to preserve, so this is a plain field patch with last-write-wins,
+ * which is what the server does for appointments too.
+ */
+export async function updateAppointmentLocally(
+  appointmentId: string,
+  patch: Partial<Appointment>,
+): Promise<{ cache: CachedData; appointment: Appointment }> {
+  const cache = await readCache();
+  const existing = cache.appointments.find((item) => item.id === appointmentId);
+  if (!existing) throw new Error('That appointment is not in your offline data.');
+
+  const now = new Date();
+  const updated: Appointment = {
+    ...existing,
+    ...patch,
+    updatedAt: now.toISOString(),
+    rev: existing.rev + 1,
+  };
+
+  const nextCache: CachedData = {
+    ...cache,
+    appointments: cache.appointments.map((item) => (item.id === appointmentId ? updated : item)),
+  };
+  await writeCache(nextCache);
+
+  await enqueue({
+    mutationId: randomId(),
+    entity: 'appointment',
+    operation: 'update',
+    entityId: appointmentId,
+    clientUpdatedAt: now.toISOString(),
+    payload: patch as Record<string, unknown>,
+  });
+
+  return { cache: nextCache, appointment: updated };
+}
+
 /* ────────────────────────────────── Cursor ──────────────────────────────── */
 
 export async function readCursor(): Promise<string | null> {

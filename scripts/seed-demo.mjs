@@ -75,7 +75,23 @@ const token = auth.json.accessToken;
 const today = todayIn(TZ);
 const startDate = addDays(today, -HISTORY_DAYS);
 
+/**
+ * Reuse any medicine that already exists by name.
+ *
+ * Relying on the API's duplicate check is not enough: its uniqueness key
+ * includes the start date, and `startDate` here is relative to *today*. A run
+ * on a later day therefore produced a second, legitimately-distinct course of
+ * the same medicine — so re-seeding accumulated duplicates instead of being
+ * idempotent, which is what this script promises.
+ */
+const existing = await call('/medicines', { token });
+const existingNames = new Set(
+  (existing.json?.medicines ?? []).map((m) => m.name.toLowerCase()),
+);
+
 for (const medicine of MEDICINES) {
+  if (existingNames.has(medicine.name.toLowerCase())) continue;
+
   const res = await call('/medicines', {
     method: 'POST',
     token,
@@ -91,6 +107,77 @@ for (const medicine of MEDICINES) {
   if (res.status !== 201 && res.status !== 409) {
     console.warn(`  ${medicine.name}: http ${res.status}`);
   }
+}
+
+/* ── Appointments ────────────────────────────────────────────────────────── */
+
+const APPOINTMENTS = [
+  {
+    kind: 'lab_test',
+    title: 'HbA1c and lipid panel',
+    offsetDays: 3,
+    localTime: '08:30',
+    provider: 'Apollo Diagnostics',
+    location: 'Sector 62, Noida',
+    requiresFasting: true,
+    notes: 'Nothing to eat after 10pm the night before.',
+  },
+  {
+    kind: 'doctor',
+    title: 'Diabetes review',
+    offsetDays: 12,
+    localTime: '16:00',
+    provider: 'Dr. Rao',
+    location: 'Fortis, Noida',
+    requiresFasting: false,
+    notes: null,
+  },
+  {
+    kind: 'doctor',
+    title: 'Blood pressure check',
+    offsetDays: -9,
+    localTime: '11:00',
+    provider: 'Dr. Rao',
+    location: null,
+    requiresFasting: false,
+    notes: null,
+  },
+];
+
+// Both scopes: one of the seeded appointments is deliberately in the past, and
+// checking only `upcoming` recreated it on every run.
+const [upcomingRes, pastRes] = await Promise.all([
+  call('/appointments?scope=upcoming', { token }),
+  call('/appointments?scope=past', { token }),
+]);
+const existingTitles = new Set(
+  [...(upcomingRes.json?.appointments ?? []), ...(pastRes.json?.appointments ?? [])].map((a) =>
+    a.title.toLowerCase(),
+  ),
+);
+
+for (const appointment of APPOINTMENTS) {
+  // Same reasoning as medicines: dates are relative to today, so nothing in
+  // the API's own uniqueness check stops a re-run duplicating these.
+  if (existingTitles.has(appointment.title.toLowerCase())) continue;
+
+  const res = await call('/appointments', {
+    method: 'POST',
+    token,
+    body: {
+      kind: appointment.kind,
+      title: appointment.title,
+      localDate: addDays(today, appointment.offsetDays),
+      localTime: appointment.localTime,
+      provider: appointment.provider,
+      location: appointment.location,
+      notes: appointment.notes,
+      requiresFasting: appointment.requiresFasting,
+      durationMinutes: 30,
+      reminderOffsetsMinutes: [1440, 60],
+    },
+  });
+  if (res.status !== 201) console.warn(`  ${appointment.title}: http ${res.status}`);
 }
 
 /* ── History ─────────────────────────────────────────────────────────────── */

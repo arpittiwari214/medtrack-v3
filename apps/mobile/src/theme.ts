@@ -58,6 +58,9 @@ export interface Palette {
   /** Solid danger fill (badges), with luminance-matched ink. */
   dangerSolid: string;
   dangerSolidInk: string;
+
+  /** Chart gridline — one step off the surface, recessive. */
+  grid: string;
 }
 
 const light: Palette = {
@@ -96,6 +99,8 @@ const light: Palette = {
   actionInk: '#ffffff',
   dangerSolid: '#c0342f',
   dangerSolidInk: '#ffffff',
+
+  grid: '#eceae6',
 };
 
 const dark: Palette = {
@@ -133,6 +138,8 @@ const dark: Palette = {
   actionInk: '#0a1418',
   dangerSolid: '#ef6b6b',
   dangerSolidInk: '#2a0f0f',
+
+  grid: '#232f35',
 };
 
 /**
