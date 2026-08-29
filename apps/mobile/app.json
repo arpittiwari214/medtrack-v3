@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#1B2B4B",
+      "backgroundColor": "#101619",
       "resizeMode": "contain"
     },
     "ios": {
@@ -24,7 +24,7 @@
     "android": {
       "package": "app.medtrack.client",
       "adaptiveIcon": {
-        "backgroundColor": "#1B2B4B",
+        "backgroundColor": "#0891a8",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -42,7 +42,7 @@
       [
         "expo-notifications",
         {
-          "color": "#1B2B4B",
+          "color": "#0891a8",
           "defaultChannel": "reminders"
         }
       ],

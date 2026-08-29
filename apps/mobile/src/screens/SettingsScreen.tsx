@@ -1,15 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useApp } from '../context/AppContext.js';
+import { Alert, Linking, ScrollView, Text, View } from 'react-native';
+import { useApp } from '../context/AppContext';
 import {
   pendingReminderCount,
   requestPermission,
   rescheduleReminders,
-} from '../notifications/index.js';
-import { readOutbox } from '../storage/offline.js';
-import { colors, radius, spacing, type, MIN_TOUCH } from '../theme.js';
+} from '../notifications/index';
+import { readOutbox } from '../storage/offline';
+import { spacing, type, useTheme } from '../theme';
+import {
+  ActionSecondary,
+  Banner,
+  ListRow,
+  Panel,
+  PanelBody,
+  PanelHead,
+  ScreenHeader,
+  sharedStyles,
+} from '../components/ui';
+import { AlertTriangle } from '../components/icons';
 
 export default function SettingsScreen() {
+  const c = useTheme();
   const { user, cache, signOut, refresh, syncing } = useApp();
 
   const [scheduled, setScheduled] = useState(0);
@@ -17,11 +29,10 @@ export default function SettingsScreen() {
   const [permission, setPermission] = useState<'granted' | 'denied' | 'unknown'>('unknown');
 
   /**
-   * Diagnostics that matter for a reminder app.
-   *
-   * "Are notifications actually permitted, and how many are queued with the OS"
-   * is the first thing to check when someone says reminders stopped — so it is
-   * visible to the user rather than buried in a support request.
+   * Diagnostics that matter for a reminder app. "Are notifications actually
+   * permitted, and how many are queued with the OS" is the first thing to check
+   * when someone says reminders stopped — so it is visible to the user rather
+   * than buried in a support request.
    */
   const loadDiagnostics = useCallback(async () => {
     const [count, outbox] = await Promise.all([pendingReminderCount(), readOutbox()]);
@@ -60,7 +71,7 @@ export default function SettingsScreen() {
   function confirmSignOut() {
     Alert.alert(
       'Sign out?',
-      'Your reminders will stop on this device and your offline data will be removed.',
+      'Your reminders stop on this device and your offline data is removed.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
@@ -69,141 +80,94 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Settings</Text>
+    <ScrollView
+      style={[sharedStyles.screen, { backgroundColor: c.bg }]}
+      contentContainerStyle={sharedStyles.content}
+    >
+      <ScreenHeader eyebrow={user?.email} title="Settings" />
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Account</Text>
-        <Row label="Name" value={user?.name ?? '—'} />
-        <Row label="Email" value={user?.email ?? '—'} />
-        <Row label="Timezone" value={user?.timezone ?? '—'} />
+      <View style={sharedStyles.stack}>
+        <Panel>
+          <PanelHead label="Account" />
+          <View>
+            <ListRow title={user?.name ?? '—'} subtitle="Name" />
+            <ListRow title={user?.timezone ?? '—'} subtitle="Timezone" last />
+          </View>
+        </Panel>
+
+        <Panel>
+          <PanelHead label="Reminders" />
+          <PanelBody>
+            <View style={sharedStyles.rowBetween}>
+              <Text style={[type.sm, { color: c.text2 }]}>Scheduled on this device</Text>
+              <Text style={[type.base, { color: c.text, fontWeight: '700' }]}>{scheduled}</Text>
+            </View>
+            <Text style={[type.xs, { color: c.text2, marginTop: spacing.md, lineHeight: 19 }]}>
+              Reminders are scheduled with your phone in advance, so they arrive even with the app
+              closed and no internet.
+            </Text>
+            <View style={{ marginTop: spacing.lg }}>
+              <ActionSecondary label="Check notification permission" onPress={enableNotifications} />
+            </View>
+            {permission === 'denied' && (
+              <View style={{ marginTop: spacing.md }}>
+                <Banner tone="danger" icon={<AlertTriangle size={16} color={c.dangerInk} />}>
+                  Notifications are blocked. MedTrack cannot remind you until you allow them.
+                </Banner>
+              </View>
+            )}
+          </PanelBody>
+        </Panel>
+
+        <Panel>
+          <PanelHead label="Sync" />
+          <PanelBody>
+            <View style={sharedStyles.rowBetween}>
+              <Text style={[type.sm, { color: c.text2 }]}>Last synced</Text>
+              <Text style={[type.xs, { color: c.text }]}>
+                {cache.syncedAt ? new Date(cache.syncedAt).toLocaleString() : 'Never'}
+              </Text>
+            </View>
+            <View style={[sharedStyles.rowBetween, { marginTop: spacing.md }]}>
+              <Text style={[type.sm, { color: c.text2 }]}>Waiting to send</Text>
+              <Text style={[type.xs, { color: c.text }]}>
+                {queued === 0 ? 'Nothing' : `${queued} changes`}
+              </Text>
+            </View>
+            {queued > 0 && (
+              <Text style={[type.xs, { color: c.text2, marginTop: spacing.md, lineHeight: 19 }]}>
+                These are saved on your phone and go out automatically when you are back online.
+              </Text>
+            )}
+            <View style={{ marginTop: spacing.lg }}>
+              <ActionSecondary label={syncing ? 'Syncing…' : 'Sync now'} onPress={refresh} />
+            </View>
+          </PanelBody>
+        </Panel>
+
+        <Panel>
+          <PanelHead label="About" />
+          <PanelBody>
+            <Text style={[type.xs, { color: c.text2, lineHeight: 19 }]}>
+              MedTrack is a reminder tool, not a medical device. It does not give medical advice, and
+              it should not be your only safeguard for an important medicine.
+            </Text>
+          </PanelBody>
+          <View>
+            <ListRow
+              title="Medical disclaimer"
+              onPress={() => void Linking.openURL('https://medtrack.app/medical-disclaimer')}
+            />
+            <ListRow
+              title="Privacy policy"
+              onPress={() => void Linking.openURL('https://medtrack.app/privacy')}
+              last
+            />
+          </View>
+        </Panel>
+
+        <ActionSecondary label="Sign out" onPress={confirmSignOut} />
       </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Reminders</Text>
-        <Row label="Scheduled on this device" value={String(scheduled)} />
-        <Text style={styles.hint}>
-          Reminders are scheduled with your phone in advance, so they arrive even with the app closed
-          and no internet.
-        </Text>
-        <Button label="Check notification permission" onPress={enableNotifications} />
-        {permission === 'denied' && (
-          <Text style={styles.warning}>
-            Notifications are blocked. MedTrack cannot remind you until you allow them.
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Sync</Text>
-        <Row
-          label="Last synced"
-          value={cache.syncedAt ? new Date(cache.syncedAt).toLocaleString() : 'Never'}
-        />
-        <Row label="Waiting to send" value={queued === 0 ? 'Nothing' : `${queued} changes`} />
-        {queued > 0 && (
-          <Text style={styles.hint}>
-            These are saved on your phone and will be sent automatically when you are back online.
-          </Text>
-        )}
-        <Button label={syncing ? 'Syncing…' : 'Sync now'} onPress={refresh} disabled={syncing} />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>About</Text>
-        <Text style={styles.hint}>
-          MedTrack is a reminder tool, not a medical device. It does not give medical advice, and it
-          should not be your only safeguard for an important medicine.
-        </Text>
-        <Button
-          label="Read the medical disclaimer"
-          onPress={() => void Linking.openURL('https://medtrack.app/medical-disclaimer')}
-        />
-        <Button
-          label="Privacy policy"
-          onPress={() => void Linking.openURL('https://medtrack.app/privacy')}
-        />
-      </View>
-
-      <Button label="Sign out" tone="danger" onPress={confirmSignOut} />
     </ScrollView>
   );
 }
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue} numberOfLines={1}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function Button({
-  label,
-  onPress,
-  tone = 'neutral',
-  disabled = false,
-}: {
-  label: string;
-  onPress: () => void;
-  tone?: 'neutral' | 'danger';
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.button,
-        tone === 'danger' && styles.buttonDanger,
-        pressed && styles.pressed,
-        disabled && styles.disabled,
-      ]}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-    >
-      <Text style={[styles.buttonText, tone === 'danger' && styles.buttonTextDanger]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
-  title: { ...type.display, color: colors.text, marginBottom: spacing.sm },
-
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  cardTitle: { ...type.heading, color: colors.text },
-
-  row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  rowLabel: { ...type.body, color: colors.textMuted },
-  rowValue: { ...type.body, color: colors.text, flexShrink: 1, textAlign: 'right' },
-
-  hint: { ...type.caption, color: colors.textMuted, lineHeight: 19 },
-  warning: { ...type.caption, color: colors.danger },
-
-  button: {
-    minHeight: MIN_TOUCH,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  buttonDanger: { borderColor: colors.danger, backgroundColor: colors.dangerBg },
-  buttonText: { ...type.label, fontWeight: '600', color: colors.text },
-  buttonTextDanger: { color: colors.danger },
-  pressed: { opacity: 0.7 },
-  disabled: { opacity: 0.5 },
-});

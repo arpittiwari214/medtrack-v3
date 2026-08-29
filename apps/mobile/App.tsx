@@ -7,58 +7,63 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useColorScheme } from 'react-native';
 
-import { AppProvider, useApp } from './src/context/AppContext.js';
-import SignInScreen from './src/screens/SignInScreen.js';
-import TodayScreen from './src/screens/TodayScreen.js';
-import MedicinesScreen from './src/screens/MedicinesScreen.js';
-import SettingsScreen from './src/screens/SettingsScreen.js';
-import { colors, spacing, type } from './src/theme.js';
+import { AppProvider, useApp } from './src/context/AppContext';
+import SignInScreen from './src/screens/SignInScreen';
+import TodayScreen from './src/screens/TodayScreen';
+import MedicinesScreen from './src/screens/MedicinesScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import { Home, Pill, Settings as SettingsIcon } from './src/components/icons';
+import { spacing, staticPalette, type, useTheme } from './src/theme';
 
 const Tab = createBottomTabNavigator();
 
 function Tabs() {
+  const c = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.navy,
-        tabBarInactiveTintColor: colors.textSubtle,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarActiveTintColor: c.brand,
+        tabBarInactiveTintColor: c.text3,
+        tabBarStyle: {
+          backgroundColor: c.surface,
+          borderTopColor: c.border,
+          height: 62,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
       <Tab.Screen
         name="Today"
         component={TodayScreen}
-        options={{ tabBarIcon: ({ color }) => <TabIcon glyph="🏠" color={color} /> }}
+        options={{ tabBarIcon: ({ color }) => <Home size={22} color={color} /> }}
       />
       <Tab.Screen
         name="Medicines"
         component={MedicinesScreen}
-        options={{ tabBarIcon: ({ color }) => <TabIcon glyph="💊" color={color} /> }}
+        options={{ tabBarIcon: ({ color }) => <Pill size={22} color={color} /> }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ tabBarIcon: ({ color }) => <TabIcon glyph="⚙️" color={color} /> }}
+        options={{ tabBarIcon: ({ color }) => <SettingsIcon size={22} color={color} /> }}
       />
     </Tab.Navigator>
   );
 }
 
-function TabIcon({ glyph, color }: { glyph: string; color: string }) {
-  return <Text style={{ fontSize: 20, color }}>{glyph}</Text>;
-}
-
 function Root() {
+  const c = useTheme();
   const { user, loading, actOnDose } = useApp();
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
@@ -88,10 +93,18 @@ function Root() {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <Text style={styles.loadingIcon}>💊</Text>
-        <ActivityIndicator color={colors.navy} />
-        <Text style={styles.loadingText}>Loading MedTrack…</Text>
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: c.bg,
+          gap: spacing.md,
+        }}
+      >
+        <Pill size={36} color={c.brand} />
+        <ActivityIndicator color={c.brand} />
+        <Text style={[type.sm, { color: c.text2 }]}>Loading MedTrack…</Text>
       </View>
     );
   }
@@ -101,10 +114,25 @@ function Root() {
 
 export default function App() {
   const scheme = useColorScheme();
+  const palette = scheme === 'dark' ? staticPalette.dark : staticPalette.light;
+
+  /** Navigation's own theme, so its surfaces match ours rather than defaulting. */
+  const navigationTheme = {
+    ...(scheme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors,
+      primary: palette.brand,
+      background: palette.bg,
+      card: palette.surface,
+      text: palette.text,
+      border: palette.border,
+      notification: palette.dangerSolid,
+    },
+  };
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <NavigationContainer theme={navigationTheme}>
         <AppProvider>
           <StatusBar style="auto" />
           <Root />
@@ -113,15 +141,3 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg,
-    gap: spacing.md,
-  },
-  loadingIcon: { fontSize: 44 },
-  loadingText: { ...type.body, color: colors.textMuted },
-});

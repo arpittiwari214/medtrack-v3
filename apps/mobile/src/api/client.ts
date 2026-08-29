@@ -10,8 +10,8 @@
  *    spinning indefinitely on a train.
  */
 
-import { API_URL } from '../config.js';
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../storage/secure.js';
+import { API_URL } from '../config';
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../storage/secure';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 

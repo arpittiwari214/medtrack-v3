@@ -98,7 +98,7 @@ export async function configureChannels(): Promise<void> {
     description: 'Reminders to take your medicine',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#1B2B4B',
+    lightColor: '#0891a8',
     // Reminders must be visible on a locked screen — that is where they are read.
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: false,
@@ -109,7 +109,7 @@ export async function configureChannels(): Promise<void> {
     description: 'Caregiver alerts and emergencies',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400],
-    lightColor: '#C0392F',
+    lightColor: '#c0342f',
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     // Emergencies should get through Do Not Disturb.
     bypassDnd: true,

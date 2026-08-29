@@ -19,22 +19,22 @@ import {
 } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import type { DoseAction, DoseEvent, Medicine, User } from '@medtrack/shared';
-import { api, setSessionEndedHandler } from '../api/client.js';
-import { clearTokens, getAccessToken, setTokens } from '../storage/secure.js';
+import { api, setSessionEndedHandler } from '../api/client';
+import { clearTokens, getAccessToken, setTokens } from '../storage/secure';
 import {
   actOnDoseLocally,
   clearAll,
   readCache,
   type CachedData,
-} from '../storage/offline.js';
-import { sync } from '../sync/index.js';
+} from '../storage/offline';
+import { sync } from '../sync/index';
 import {
   cancelAllDoseReminders,
   configureChannels,
   registerNotificationActions,
   rescheduleReminders,
-} from '../notifications/index.js';
-import { SYNC_INTERVAL_MS } from '../config.js';
+} from '../notifications/index';
+import { SYNC_INTERVAL_MS } from '../config';
 
 interface AppContextValue {
   user: User | null;

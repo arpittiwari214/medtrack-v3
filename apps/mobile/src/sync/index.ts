@@ -12,7 +12,7 @@
  */
 
 import type { Appointment, DoseEvent, Medicine } from '@medtrack/shared';
-import { api, OfflineError } from '../api/client.js';
+import { api, OfflineError } from '../api/client';
 import {
   acknowledge,
   mergeServerChanges,
@@ -20,8 +20,8 @@ import {
   readOutbox,
   writeCursor,
   type CachedData,
-} from '../storage/offline.js';
-import { rescheduleReminders } from '../notifications/index.js';
+} from '../storage/offline';
+import { rescheduleReminders } from '../notifications/index';
 
 interface SyncResponse {
   results: { mutationId: string; outcome: string; reason?: string }[];

@@ -5,16 +5,18 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { ApiError, OfflineError } from '../api/client.js';
-import { useApp } from '../context/AppContext.js';
-import { colors, radius, spacing, type, MIN_TOUCH } from '../theme.js';
+import { ApiError, OfflineError } from '../api/client';
+import { useApp } from '../context/AppContext';
+import { MIN_TOUCH, radius, spacing, type, useTheme } from '../theme';
+import { Banner } from '../components/ui';
+import { AlertTriangle, Pill } from '../components/icons';
 
 export default function SignInScreen() {
+  const c = useTheme();
   const { signIn } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,26 +41,48 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={{ flex: 1, backgroundColor: c.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.brand}>
-          <Text style={styles.logo}>💊</Text>
-          <Text style={styles.title}>MedTrack</Text>
-          <Text style={styles.subtitle}>Medication reminders that actually arrive</Text>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          padding: spacing.xl,
+          gap: spacing.lg,
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ marginBottom: spacing.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Pill size={22} color={c.brand} />
+            <Text style={[type.lg, { color: c.text }]}>MedTrack</Text>
+          </View>
+          <Text style={[type.display, { color: c.text, marginTop: spacing.lg }]}>Welcome back</Text>
+          <Text style={[type.sm, { color: c.text2, marginTop: spacing.sm }]}>
+            Sign in to see today’s doses.
+          </Text>
         </View>
 
         {error !== '' && (
-          <View style={styles.errorBox} accessibilityLiveRegion="polite">
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
+          <Banner tone="danger" icon={<AlertTriangle size={18} color={c.dangerInk} />}>
+            {error}
+          </Banner>
         )}
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Email address</Text>
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>Email address</Text>
           <TextInput
-            style={styles.input}
+            style={{
+              minHeight: MIN_TOUCH + 4,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.borderStrong,
+              borderRadius: radius.sm,
+              paddingHorizontal: spacing.md,
+              ...type.base,
+              color: c.text,
+            }}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -66,14 +90,23 @@ export default function SignInScreen() {
             keyboardType="email-address"
             textContentType="emailAddress"
             placeholder="you@email.com"
-            placeholderTextColor={colors.textSubtle}
+            placeholderTextColor={c.text3}
           />
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>Password</Text>
           <TextInput
-            style={styles.input}
+            style={{
+              minHeight: MIN_TOUCH + 4,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.borderStrong,
+              borderRadius: radius.sm,
+              paddingHorizontal: spacing.md,
+              ...type.base,
+              color: c.text,
+            }}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -84,75 +117,36 @@ export default function SignInScreen() {
           />
         </View>
 
+        {/* The deeper brand step, not --brand: white on the lighter step is
+            3.73:1, under AA, and this is the screen's only action. */}
         <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed, busy && styles.buttonDisabled]}
+          accessibilityRole="button"
           onPress={submit}
           disabled={busy}
-          accessibilityRole="button"
+          style={({ pressed }) => ({
+            minHeight: 52,
+            borderRadius: radius.sm,
+            backgroundColor: c.brandStrong,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: spacing.sm,
+            opacity: busy ? 0.6 : pressed ? 0.9 : 1,
+          })}
         >
           {busy ? (
-            <ActivityIndicator color={colors.onDark} />
+            <ActivityIndicator color={c.onBrand} />
           ) : (
-            <Text style={styles.buttonText}>Sign in</Text>
+            <Text style={{ ...type.base, fontWeight: '700', color: c.onBrand }}>Sign in</Text>
           )}
         </Pressable>
 
         {/* Account creation deliberately lives on the web. Signup needs the
-            consent flow and the legal documents, and reproducing those inside a
+            consent flow and the legal documents, and reproducing those in a
             native screen invites the two drifting apart. */}
-        <Text style={styles.footnote}>
+        <Text style={[type.xs, { color: c.text3, textAlign: 'center', marginTop: spacing.md }]}>
           New to MedTrack? Create your account at medtrack.app, then sign in here.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.lg,
-  },
-  brand: { alignItems: 'center', marginBottom: spacing.lg },
-  logo: { fontSize: 48, marginBottom: spacing.sm },
-  title: { ...type.display, color: colors.text },
-  subtitle: { ...type.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xs },
-  field: { gap: spacing.sm },
-  label: { ...type.label, color: colors.text },
-  input: {
-    minHeight: MIN_TOUCH + 4,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    ...type.body,
-    color: colors.text,
-  },
-  button: {
-    minHeight: 52,
-    backgroundColor: colors.navy,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  buttonPressed: { opacity: 0.85 },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { ...type.bodyStrong, color: colors.onDark },
-  errorBox: {
-    backgroundColor: colors.dangerBg,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-  },
-  errorText: { ...type.body, color: colors.danger },
-  footnote: {
-    ...type.caption,
-    color: colors.textSubtle,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
-});

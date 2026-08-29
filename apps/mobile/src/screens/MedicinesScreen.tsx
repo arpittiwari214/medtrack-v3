@@ -1,8 +1,24 @@
 import { useMemo } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { dosesRemainingInStock, formatTime12h, isLowStock, type Medicine } from '@medtrack/shared';
-import { useApp } from '../context/AppContext.js';
-import { colors, radius, spacing, type } from '../theme.js';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import {
+  dosesRemainingInStock,
+  formatTime12h,
+  isLowStock,
+  type Medicine,
+} from '@medtrack/shared';
+import { useApp } from '../context/AppContext';
+import { TABULAR, radius, spacing, type, useTheme } from '../theme';
+import {
+  Badge,
+  Banner,
+  EmptyState,
+  Panel,
+  PanelBody,
+  PanelHead,
+  ScreenHeader,
+  sharedStyles,
+} from '../components/ui';
+import { Package, Pill } from '../components/icons';
 
 const SCHEDULE_LABEL: Record<string, string> = {
   daily: 'Every day',
@@ -13,6 +29,7 @@ const SCHEDULE_LABEL: Record<string, string> = {
 };
 
 export default function MedicinesScreen() {
+  const c = useTheme();
   const { cache, syncing, refresh } = useApp();
 
   const active = useMemo(
@@ -22,112 +39,95 @@ export default function MedicinesScreen() {
 
   return (
     <ScrollView
-      style={styles.flex}
-      contentContainerStyle={styles.container}
+      style={[sharedStyles.screen, { backgroundColor: c.bg }]}
+      contentContainerStyle={sharedStyles.content}
       refreshControl={
-        <RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={colors.navy} />
+        <RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={c.brand} />
       }
     >
-      <Text style={styles.title}>Medicines</Text>
+      <ScreenHeader
+        eyebrow={active.length > 0 ? `${active.length} active` : undefined}
+        title="Medicines"
+      />
 
       {active.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>💊</Text>
-          <Text style={styles.emptyTitle}>No medicines yet</Text>
-          <Text style={styles.emptyBody}>
-            Add your medicines on the web app and they will sync here.
-          </Text>
-        </View>
+        <EmptyState
+          icon={(colour) => <Pill size={22} color={colour} />}
+          title="No medicines yet"
+          description="Add your medicines on the web app and they sync here."
+        />
       ) : (
-        active.map((medicine) => {
-          const remaining = dosesRemainingInStock(medicine);
-          const low = isLowStock(medicine);
+        <View style={sharedStyles.stack}>
+          {active.map((medicine) => {
+            const remaining = dosesRemainingInStock(medicine);
+            const low = isLowStock(medicine);
 
-          return (
-            <View key={medicine.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.name}>{medicine.name}</Text>
-                {medicine.isCritical && (
-                  <View style={[styles.badge, { backgroundColor: colors.dangerBg }]}>
-                    <Text style={[styles.badgeText, { color: colors.danger }]}>Critical</Text>
-                  </View>
-                )}
-              </View>
+            return (
+              <Panel key={medicine.id} critical={medicine.isCritical}>
+                <PanelHead
+                  label={SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind}
+                  aside={medicine.isCritical ? <Badge label="Critical" tone="danger" /> : undefined}
+                />
 
-              <Text style={styles.meta}>
-                {medicine.strength} · {SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind}
-              </Text>
-
-              {medicine.schedule.times.length > 0 && (
-                <View style={styles.timeRow}>
-                  {medicine.schedule.times.map((time) => (
-                    <View key={time} style={styles.timeChip}>
-                      <Text style={styles.timeChipText}>{formatTime12h(time)}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {medicine.instructions ? (
-                <Text style={styles.instructions}>{medicine.instructions}</Text>
-              ) : null}
-
-              {remaining !== null && (
-                <View
-                  style={[
-                    styles.stock,
-                    { backgroundColor: low ? colors.warnBg : colors.surface2 },
-                  ]}
-                >
-                  <Text style={[styles.stockText, { color: low ? colors.warn : colors.textMuted }]}>
-                    {remaining} {remaining === 1 ? 'dose' : 'doses'} left
-                    {low ? ' — time to reorder' : ''}
+                <PanelBody>
+                  <Text style={[type.lg, { color: c.text }]} numberOfLines={1}>
+                    {medicine.name}
                   </Text>
-                </View>
-              )}
-            </View>
-          );
-        })
+                  <Text style={[type.xs, { color: c.text3, marginTop: 2 }]}>
+                    {medicine.strength}
+                  </Text>
+
+                  {medicine.schedule.times.length > 0 && (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: spacing.sm,
+                        marginTop: spacing.md,
+                      }}
+                    >
+                      {medicine.schedule.times.map((time) => (
+                        <View
+                          key={time}
+                          style={{
+                            backgroundColor: c.surface2,
+                            borderRadius: radius.xs,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                          }}
+                        >
+                          <Text style={[type.micro, TABULAR, { color: c.text2 }]}>
+                            {formatTime12h(time)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {medicine.instructions ? (
+                    <Text style={[type.xs, { color: c.text3, marginTop: spacing.md }]}>
+                      {medicine.instructions}
+                    </Text>
+                  ) : null}
+
+                  {/* Supply is shown in doses, not units — "6 doses left" is
+                      actionable; "12 tablets" needs mental arithmetic. */}
+                  {remaining !== null && (
+                    <View style={{ marginTop: spacing.md }}>
+                      <Banner
+                        tone={low ? 'warn' : 'neutral'}
+                        icon={<Package size={16} color={low ? c.warnInk : c.text2} />}
+                      >
+                        {`${remaining} ${remaining === 1 ? 'dose' : 'doses'} left${low ? ' — time to reorder' : ''}`}
+                      </Banner>
+                    </View>
+                  )}
+                </PanelBody>
+              </Panel>
+            );
+          })}
+        </View>
       )}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
-  title: { ...type.display, color: colors.text, marginBottom: spacing.sm },
-
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  name: { ...type.heading, color: colors.text, flexShrink: 1 },
-  meta: { ...type.caption, color: colors.textMuted },
-  instructions: { ...type.caption, color: colors.textMuted, fontStyle: 'italic' },
-
-  timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  timeChip: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
-  },
-  timeChipText: { ...type.caption, color: colors.text, fontVariant: ['tabular-nums'] },
-
-  badge: { borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: 2 },
-  badgeText: { ...type.caption, fontWeight: '600' },
-
-  stock: { borderRadius: radius.sm, padding: spacing.md },
-  stockText: { ...type.caption, fontWeight: '500' },
-
-  empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.sm },
-  emptyIcon: { fontSize: 44 },
-  emptyTitle: { ...type.heading, color: colors.text },
-  emptyBody: { ...type.body, color: colors.textMuted, textAlign: 'center' },
-});
