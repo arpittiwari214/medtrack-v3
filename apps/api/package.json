@@ -15,6 +15,7 @@
   "dependencies": {
     "@medtrack/shared": "*",
     "bcryptjs": "^3.0.2",
+    "compression": "^1.8.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "expo-server-sdk": "^3.13.0",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",

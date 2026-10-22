@@ -303,15 +303,28 @@ export function insights(
 
     // Only call it a pattern when one window clearly dominates.
     if (topCount >= MIN_SAMPLE_FOR_PATTERN && topCount > secondCount * 1.5) {
-      const advice: Record<keyof typeof buckets, string> = {
-        morning: 'Try keeping them next to something you already do first thing.',
-        afternoon: 'A midday alarm on your phone tends to help here.',
-        evening: 'Setting the reminder 30 minutes earlier often catches this one.',
-        night: 'Consider moving this dose earlier if your prescriber agrees.',
+      // Tips are about where the medicine is kept — never about when or how it
+      // is taken. Under CDSCO's 2026 software guidance the test is functional:
+      // suggesting a dose be moved ("consider moving this dose earlier") is
+      // treatment-related decision support and can make the app a regulated
+      // medical device. Moving the reminder is the same advice in disguise,
+      // because here the reminder time is the dose time. And meal-pairing tips
+      // are out too: some medicines must not be taken with food.
+      const WHEN: Record<keyof typeof buckets, string> = {
+        morning: 'in the morning',
+        afternoon: 'in the afternoon',
+        evening: 'in the evening',
+        night: 'at night',
+      };
+      const tip: Record<keyof typeof buckets, string> = {
+        morning: 'Keeping the strip next to something you use first thing, like your toothbrush, can help.',
+        afternoon: 'Keeping a strip in your bag or at work can help.',
+        evening: 'Keeping the strip where you spend your evenings can help.',
+        night: 'Keeping the strip beside your bed can help.',
       };
       found.push({
         kind: 'time_of_day_pattern',
-        message: `Most of your missed doses (${topCount} of ${missed.length}) are in the ${topName}. ${advice[topName]}`,
+        message: `Most of your missed doses (${topCount} of ${missed.length}) are ${WHEN[topName]}. ${tip[topName]}`,
         weight: 80,
       });
     }

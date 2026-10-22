@@ -333,18 +333,13 @@ export function projectedRunOutDate(
   if (stock.unitsRemaining <= 0) return null;
   if (medicine.schedule.kind === 'as_needed') return null;
 
-  const startDate = todayIn(medicine.timezone, from);
-  const doses = expandMedicine(medicine, {
-    from: startDate,
-    to: addDays(startDate, horizonDays),
-  }).filter((dose) => dose.scheduledAt >= from.toISOString());
-
-  let remaining = stock.unitsRemaining;
-  for (const dose of doses) {
-    remaining -= stock.unitsPerDose;
-    if (remaining < stock.unitsPerDose) return dose.localDate;
-  }
-  return null;
+  // The supply runs out on the date of the last dose it can fully cover. Walk
+  // forward only that many doses. This used to expand a whole year for every
+  // medicine on every request — a 30-tablet strip needed 30 doses and paid for
+  // 365 days, which made the medicines list the slowest call in the API.
+  const coverable = Math.max(1, Math.floor(stock.unitsRemaining / stock.unitsPerDose));
+  const upcoming = nextOccurrences(medicine, coverable, from, horizonDays);
+  return upcoming.length === coverable ? upcoming[coverable - 1]!.localDate : null;
 }
 
 /** Doses still coverable by the units on hand. */

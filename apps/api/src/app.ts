@@ -8,6 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import cors from 'cors';
 import express, { type Express } from 'express';
+import compression from 'compression';
 import helmet from 'helmet';
 // pino-http is CommonJS; under NodeNext the default import resolves to the
 // module namespace rather than the function, so take the named export.
@@ -83,6 +84,12 @@ export function createApp(): Express {
       maxAge: 86_400,
     }),
   );
+
+  /* ── Response compression ── */
+  // Dose history is repetitive JSON — the 90-day history was 140 KB raw. On
+  // Indian mobile data, where connectivity is intermittent rather than
+  // expensive, a smaller payload is what gets through before the link drops.
+  app.use(compression());
 
   /* ── Body parsing ── */
   // Bounded: a sync batch is the largest legitimate payload and is nowhere

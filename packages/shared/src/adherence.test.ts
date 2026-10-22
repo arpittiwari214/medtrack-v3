@@ -218,3 +218,23 @@ describe('today split', () => {
     expect(split.skipped).toHaveLength(0);
   });
 });
+
+describe('insight wording stays on the right side of the device line', () => {
+  // CDSCO's 2026 guidance is functional: an app that suggests changing when or
+  // how a medicine is taken is doing treatment-related decision support. These
+  // phrases must never appear in anything the insights engine says.
+  const FORBIDDEN = [/moving this dose/i, /prescriber/i, /dose earlier/i, /reminder \d+ minutes earlier/i, /with (food|meals|lunch|dinner)/i];
+
+  it('never suggests changing dose timing, in any time-of-day window', () => {
+    for (const hour of ['07:00', '14:00', '19:00', '23:00']) {
+      const doses = Array.from({ length: 6 }, (_, i) =>
+        dose(`2026-08-${String(10 + i).padStart(2, '0')}`, 'missed', { localTime: hour }),
+      );
+      for (const insight of insights(doses, { timezone: IST, today: TODAY })) {
+        for (const pattern of FORBIDDEN) {
+          expect(insight.message).not.toMatch(pattern);
+        }
+      }
+    }
+  });
+});

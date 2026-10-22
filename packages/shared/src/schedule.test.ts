@@ -258,3 +258,41 @@ describe('single-dose lookup', () => {
     expect(event).toMatchObject({ id: first!.id, status: 'scheduled', snoozeCount: 0, isAdHoc: false, rev: 1 });
   });
 });
+
+describe('run-out forecast matches walking every dose', () => {
+  // The old implementation, kept as a reference: expand a whole year and
+  // consume dose by dose.
+  function reference(medicine: Medicine, from: Date): string | null {
+    const stock = medicine.stock!;
+    const start = from.toISOString().slice(0, 10);
+    const doses = expandMedicine(medicine, { from: start, to: '2027-12-31' }).filter(
+      (d) => d.scheduledAt >= from.toISOString(),
+    );
+    let remaining = stock.unitsRemaining;
+    for (const d of doses) {
+      remaining -= stock.unitsPerDose;
+      if (remaining < stock.unitsPerDose) return d.localDate;
+    }
+    return null;
+  }
+
+  const from = new Date('2026-08-25T00:00:00.000Z');
+  const schedules: Medicine['schedule'][] = [
+    { kind: 'daily', times: ['08:00', '21:00'], startDate: '2026-08-25', endDate: null },
+    { kind: 'interval_days', times: ['09:00'], startDate: '2026-08-25', intervalDays: 3, endDate: null },
+    { kind: 'days_of_week', times: ['07:30'], startDate: '2026-08-25', weekdays: [1, 3, 5], endDate: null },
+    { kind: 'cyclic', times: ['20:00'], startDate: '2026-08-25', cycleOnDays: 21, cycleOffDays: 7, endDate: null },
+  ];
+
+  for (const schedule of schedules) {
+    for (const [units, perDose] of [[1, 1], [2, 1], [3, 2], [30, 1], [31, 2], [90, 3]] as const) {
+      it(`${schedule.kind}, ${units} units at ${perDose} per dose`, () => {
+        const medicine = makeMedicine({
+          schedule,
+          stock: { unitsRemaining: units, unitsPerDose: perDose, lowThreshold: 5 },
+        });
+        expect(projectedRunOutDate(medicine, from)).toBe(reference(medicine, from));
+      });
+    }
+  }
+});
