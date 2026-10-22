@@ -20,6 +20,7 @@
  */
 
 import type {
+  DoseEvent,
   DoseSchedule,
   InstantISO,
   LocalDate,
@@ -261,6 +262,56 @@ export function nextOccurrencesForAll(
   const merged = medicines.flatMap((medicine) => nextOccurrences(medicine, limit, after));
   merged.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   return merged.slice(0, limit);
+}
+
+/* ────────────────────────── Single-dose lookup ──────────────────────────── */
+
+/**
+ * The planned dose a deterministic id refers to, or null when the id does not
+ * name a real occurrence of this medicine.
+ *
+ * Lets either side materialise one dose on demand — a reminder actioned for a
+ * dose the phone has not synced yet, or a "taken" arriving at the server for a
+ * dose it has not generated — without trusting the caller's claim that the
+ * occurrence exists. Before this, both cases silently dropped the record.
+ */
+export function plannedDoseFor(medicine: Medicine, doseId: string): PlannedDose | null {
+  const separator = doseId.lastIndexOf('_');
+  if (separator <= 0 || doseId.slice(0, separator) !== medicine.id) return null;
+
+  const epochSeconds = Number(doseId.slice(separator + 1));
+  if (!Number.isSafeInteger(epochSeconds)) return null;
+
+  const localDate = todayIn(medicine.timezone, new Date(epochSeconds * 1000));
+  return (
+    expandMedicine(medicine, { from: localDate, to: localDate }).find((dose) => dose.id === doseId) ??
+    null
+  );
+}
+
+/** A freshly generated, unresolved dose record for a planned occurrence. */
+export function doseEventFromPlanned(planned: PlannedDose, at: InstantISO): DoseEvent {
+  return {
+    id: planned.id,
+    userId: planned.userId,
+    medicineId: planned.medicineId,
+    scheduledAt: planned.scheduledAt,
+    localDate: planned.localDate,
+    localTime: planned.localTime,
+    timezone: planned.timezone,
+    status: 'scheduled',
+    takenAt: null,
+    snoozedUntil: null,
+    snoozeCount: 0,
+    skipReason: null,
+    medicineName: planned.medicineName,
+    medicineStrength: planned.medicineStrength,
+    isCritical: planned.isCritical,
+    isAdHoc: false,
+    createdAt: at,
+    updatedAt: at,
+    rev: 1,
+  };
 }
 
 /* ──────────────────────────── Stock forecasting ─────────────────────────── */

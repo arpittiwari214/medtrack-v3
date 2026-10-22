@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Medicine } from './types.js';
 import {
+  doseEventFromPlanned,
   doseIdFor,
   dosesRemainingInStock,
   expandMedicine,
@@ -8,6 +9,7 @@ import {
   isDosingDay,
   isLowStock,
   nextOccurrences,
+  plannedDoseFor,
   projectedRunOutDate,
 } from './schedule.js';
 
@@ -218,5 +220,41 @@ describe('stock forecasting', () => {
     expect(projectedRunOutDate(makeMedicine())).toBeNull();
     expect(dosesRemainingInStock(makeMedicine())).toBeNull();
     expect(isLowStock(makeMedicine())).toBe(false);
+  });
+});
+
+describe('single-dose lookup', () => {
+  const medicine = makeMedicine();
+  const [first] = expandMedicine(medicine, { from: '2026-08-26', to: '2026-08-26' });
+
+  it('resolves a real occurrence from its id alone', () => {
+    const planned = plannedDoseFor(medicine, first!.id);
+    expect(planned).toEqual(first);
+  });
+
+  it('rejects an id at a time the schedule never doses', () => {
+    // 08:30 IST on a medicine taken at 08:00 and 21:00.
+    const fake = doseIdFor(medicine.id, '2026-08-26T03:00:00.000Z');
+    expect(plannedDoseFor(medicine, fake)).toBeNull();
+  });
+
+  it('rejects an id that belongs to a different medicine', () => {
+    const other = makeMedicine({ id: 'med-2' });
+    expect(plannedDoseFor(other, first!.id)).toBeNull();
+  });
+
+  it('rejects a day outside the course', () => {
+    const before = doseIdFor(medicine.id, '2026-08-20T02:30:00.000Z');
+    expect(plannedDoseFor(medicine, before)).toBeNull();
+  });
+
+  it('rejects malformed ids without throwing', () => {
+    expect(plannedDoseFor(medicine, 'nonsense')).toBeNull();
+    expect(plannedDoseFor(medicine, `${medicine.id}_abc`)).toBeNull();
+  });
+
+  it('builds an unresolved dose record from a planned occurrence', () => {
+    const event = doseEventFromPlanned(first!, '2026-08-26T00:00:00.000Z');
+    expect(event).toMatchObject({ id: first!.id, status: 'scheduled', snoozeCount: 0, isAdHoc: false, rev: 1 });
   });
 });

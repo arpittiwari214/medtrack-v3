@@ -16,14 +16,22 @@
  * locally and does not flicker when the authoritative answer arrives.
  */
 
-import { mergeDoseConflict, type SyncMutationInput } from '@medtrack/shared';
+import { addDays, mergeDoseConflict, todayIn, type SyncMutationInput } from '@medtrack/shared';
 import { MongoServerError } from 'mongodb';
 import { childLogger } from '../config/logger.js';
 import { Appointment } from '../models/Appointment.js';
 import { DoseEvent } from '../models/DoseEvent.js';
 import { Medicine } from '../models/Medicine.js';
 import { SyncMutation } from '../models/SyncMutation.js';
-import { toDomainDose } from './doses.js';
+import {
+  MATERIALISE_AHEAD_DAYS,
+  generateDosesForMedicine,
+  materialiseDose,
+  regenerateFutureDoses,
+  toDomainDose,
+  toDomainMedicine,
+  type MedicineSource,
+} from './doses.js';
 
 const log = childLogger('sync');
 
@@ -162,11 +170,26 @@ async function applyDoseMutation(
   userId: string,
   mutation: SyncMutationInput,
 ): Promise<{ outcome: MutationOutcome; serverState?: unknown }> {
-  const doc = await DoseEvent.findOne({ _id: mutation.entityId, userId });
+  let doc = await DoseEvent.findOne({ _id: mutation.entityId, userId });
 
   if (!doc) {
-    // The dose no longer exists — the medicine was probably deleted while the
-    // device was offline. Nothing to do, and not an error worth surfacing.
+    // Not generated yet — typically a medicine created offline, or a reminder
+    // further ahead than the materialisation window. Dropping the mutation here
+    // used to lose a "taken" the patient really recorded, so generate the dose
+    // if the id names a real occurrence of one of *this user's* medicines.
+    const medicineId = mutation.entityId.slice(0, mutation.entityId.lastIndexOf('_'));
+    const medicine = await Medicine.findOne({ _id: medicineId, userId }).lean();
+    if (
+      medicine &&
+      (await materialiseDose(toDomainMedicine(medicine as unknown as MedicineSource), mutation.entityId))
+    ) {
+      doc = await DoseEvent.findOne({ _id: mutation.entityId, userId });
+    }
+  }
+
+  if (!doc) {
+    // Genuinely not a dose of this user's — the medicine was deleted while the
+    // device was offline, or the id is not a real occurrence.
     return { outcome: 'no_op' };
   }
 
@@ -214,11 +237,15 @@ async function applyMedicineMutation(
   const payload = mutation.payload as Record<string, unknown>;
 
   if (mutation.operation === 'delete') {
-    const result = await Medicine.updateOne(
+    const archived = await Medicine.findOneAndUpdate(
       { _id: mutation.entityId, userId, archivedAt: null },
       { $set: { archivedAt: new Date() }, $inc: { rev: 1 } },
-    );
-    return result.modifiedCount > 0 ? 'applied' : 'no_op';
+      { new: true },
+    ).lean();
+    if (!archived) return 'no_op';
+    // Same as the REST path: clear unresolved future doses, keep history.
+    await regenerateFutureDoses(toDomainMedicine(archived as unknown as MedicineSource));
+    return 'applied';
   }
 
   const existing = await Medicine.findOne({ _id: mutation.entityId, userId });
@@ -227,7 +254,13 @@ async function applyMedicineMutation(
     if (mutation.operation === 'update') return 'no_op';
     // A create queued offline. `userId` is taken from the session, never the
     // payload, so a client cannot write into someone else's record.
-    await Medicine.create({ ...payload, _id: mutation.entityId, userId });
+    const created = await Medicine.create({ ...payload, _id: mutation.entityId, userId });
+
+    // The REST create materialises doses; the sync create did not, so every
+    // dose of a medicine added offline had nothing to attach to on arrival.
+    const domain = toDomainMedicine(created.toObject() as unknown as MedicineSource);
+    const today = todayIn(domain.timezone);
+    await generateDosesForMedicine(domain, today, addDays(today, MATERIALISE_AHEAD_DAYS));
     return 'applied';
   }
 
@@ -240,6 +273,15 @@ async function applyMedicineMutation(
   const { _id, userId: _ignored, rev: _rev, ...safe } = payload;
   existing.set({ ...safe, rev: existing.rev + 1 });
   await existing.save();
+
+  // A schedule edited offline must move future doses, exactly as the REST
+  // update does — otherwise reminders follow the new times while the server
+  // keeps generating the old ones.
+  if ('schedule' in safe || 'timezone' in safe || 'archivedAt' in safe) {
+    await regenerateFutureDoses(
+      toDomainMedicine(existing.toObject() as unknown as MedicineSource),
+    );
+  }
   return 'applied';
 }
 

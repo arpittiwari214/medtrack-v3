@@ -18,6 +18,7 @@ import {
   applyDoseAction,
   expandMedicine,
   isLowStock,
+  plannedDoseFor,
   todayIn,
   type DoseAction,
   type DoseEvent as DoseEventShape,
@@ -199,6 +200,22 @@ export async function generateDosesForMedicine(
     { ordered: false },
   );
   return result.upsertedCount;
+}
+
+/**
+ * Materialise one specific dose by its deterministic id, if it names a real
+ * occurrence of `medicine`. Returns whether the dose now exists.
+ *
+ * Used when a client acts on a dose the server has not generated yet — most
+ * often a medicine created offline, or a reminder further ahead than the
+ * materialisation window. Uses the same insert-only upsert as the batch path,
+ * so it can never overwrite a dose the patient already acted on.
+ */
+export async function materialiseDose(medicine: MedicineShape, doseId: string): Promise<boolean> {
+  const planned = plannedDoseFor(medicine, doseId);
+  if (!planned) return false;
+  await DoseEvent.bulkWrite([plannedToUpsert(planned, graceMinutesFor(medicine))]);
+  return true;
 }
 
 /**

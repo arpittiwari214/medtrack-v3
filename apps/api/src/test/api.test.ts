@@ -541,6 +541,113 @@ describe('offline sync', () => {
     // dose the patient really took.
     expect(stored!.status).toBe('taken');
   });
+
+  it('records a dose taken before the server had generated it', async () => {
+    const account = await signup();
+    const medicine = await createMedicine(account);
+    const dose = await DoseEvent.findOne({ medicineId: medicine['id'] }).sort({ scheduledAt: 1 }).lean();
+    const doseId = String(dose!._id);
+
+    // Simulate the server never having generated this dose — a reminder
+    // further ahead than the window, or a lag in the scheduler.
+    await DoseEvent.deleteOne({ _id: doseId });
+
+    const response = await authed(account)(request(app).post('/api/sync')).send({
+      mutations: [
+        {
+          mutationId: '22222222-2222-4222-8222-222222222222',
+          entity: 'dose',
+          operation: 'update',
+          entityId: doseId,
+          clientUpdatedAt: new Date().toISOString(),
+          payload: { status: 'taken', takenAt: new Date().toISOString() },
+        },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    // Previously `no_op`: the patient's "taken" was dropped without a trace.
+    expect(response.body.results[0].outcome).toBe('applied');
+    const stored = await DoseEvent.findById(doseId).lean();
+    expect(stored!.status).toBe('taken');
+  });
+
+  it('does not invent a dose for an id that is not a real occurrence', async () => {
+    const account = await signup();
+    const medicine = await createMedicine(account);
+    // 08:30 IST does not fall on an 08:00/21:00 schedule.
+    const fabricated = `${medicine['id']}_${Math.floor(new Date(`${TODAY_IST}T03:00:00.000Z`).getTime() / 1000)}`;
+
+    const response = await authed(account)(request(app).post('/api/sync')).send({
+      mutations: [
+        {
+          mutationId: '33333333-3333-4333-8333-333333333333',
+          entity: 'dose',
+          operation: 'update',
+          entityId: fabricated,
+          clientUpdatedAt: new Date().toISOString(),
+          payload: { status: 'taken' },
+        },
+      ],
+    });
+
+    expect(response.body.results[0].outcome).toBe('no_op');
+    expect(await DoseEvent.findById(fabricated).lean()).toBeNull();
+  });
+
+  it("will not generate doses on another user's medicine", async () => {
+    const owner = await signup();
+    const intruder = await signup();
+    const medicine = await createMedicine(owner);
+    const dose = await DoseEvent.findOne({ medicineId: medicine['id'] }).sort({ scheduledAt: 1 }).lean();
+    const doseId = String(dose!._id);
+    await DoseEvent.deleteOne({ _id: doseId });
+
+    const response = await authed(intruder)(request(app).post('/api/sync')).send({
+      mutations: [
+        {
+          mutationId: '44444444-4444-4444-8444-444444444444',
+          entity: 'dose',
+          operation: 'update',
+          entityId: doseId,
+          clientUpdatedAt: new Date().toISOString(),
+          payload: { status: 'taken' },
+        },
+      ],
+    });
+
+    expect(response.body.results[0].outcome).toBe('no_op');
+    expect(await DoseEvent.findById(doseId).lean()).toBeNull();
+  });
+
+  it('generates doses for a medicine created offline', async () => {
+    const account = await signup();
+    const medicineId = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+
+    const response = await authed(account)(request(app).post('/api/sync')).send({
+      mutations: [
+        {
+          mutationId: '55555555-5555-4555-8555-555555555555',
+          entity: 'medicine',
+          operation: 'create',
+          entityId: medicineId,
+          clientUpdatedAt: new Date().toISOString(),
+          payload: {
+            name: 'Telma',
+            strength: '40 mg',
+            form: 'tablet',
+            timezone: IST,
+            isCritical: false,
+            schedule: { kind: 'daily', times: ['09:00'], startDate: TODAY_IST },
+          },
+        },
+      ],
+    });
+
+    expect(response.body.results[0].outcome).toBe('applied');
+    // Previously zero: the sync create skipped materialisation that REST does.
+    expect(await DoseEvent.countDocuments({ medicineId })).toBeGreaterThan(0);
+  });
 });
 
 /* ────────────────────────── Data rights & errors ───────────────────────── */
