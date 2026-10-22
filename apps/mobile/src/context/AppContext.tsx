@@ -53,6 +53,12 @@ import {
   rescheduleReminders,
   scheduleSnooze,
 } from '../notifications/index';
+import {
+  exactAlarmsJustGranted,
+  readReminderHealth,
+  recordDeliveredFromTray,
+  type ReminderHealth,
+} from '../notifications/health';
 import { SYNC_INTERVAL_MS } from '../config';
 
 interface AppContextValue {
@@ -68,6 +74,9 @@ interface AppContextValue {
   refresh: () => Promise<void>;
   /** Re-run the reminder schedule, replacing everything when `force` is set. */
   rescheduleNow: (force?: boolean) => Promise<number>;
+  /** Whether reminders on this phone can be trusted; null until first read. */
+  health: ReminderHealth | null;
+  refreshHealth: () => Promise<void>;
 }
 
 const EMPTY_CACHE: CachedData = {
@@ -99,6 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [cache, setCache] = useState<CachedData>(EMPTY_CACHE);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
+  const [health, setHealth] = useState<ReminderHealth | null>(null);
 
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const askedForPermission = useRef(false);
@@ -191,14 +201,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [cache.medicines, resolvedDoseIds],
   );
 
+  const refreshHealth = useCallback(async () => {
+    setHealth(await readReminderHealth(cache.medicines.length > 0));
+  }, [cache.medicines.length]);
+
+  /**
+   * Each time the app comes forward: log when tray reminders actually landed,
+   * and if exact alarms were just granted, replace every reminder — those set
+   * while it was denied stay inexact until re-created.
+   */
+  const checkReliability = useCallback(async () => {
+    await recordDeliveredFromTray();
+    if (await exactAlarmsJustGranted()) await rescheduleNow(true);
+    await refreshHealth();
+  }, [rescheduleNow, refreshHealth]);
+
+  useEffect(() => {
+    if (!user) return;
+    void checkReliability();
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void checkReliability();
+    });
+    return () => subscription.remove();
+  }, [user, checkReliability]);
+
   // Every change to local data re-plans reminders — after a sync, an action,
   // or a medicine edit, online or not. Debounced, because a sync can land
   // several state updates in a row.
   useEffect(() => {
     if (!user) return;
-    const timer = setTimeout(() => void rescheduleNow(), 400);
+    const timer = setTimeout(() => {
+      void rescheduleNow().then(refreshHealth);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [user, rescheduleNow]);
+  }, [user, rescheduleNow, refreshHealth]);
 
   // Ask for notification permission once there is something to remind about.
   // Nothing asked before: the only route was a button deep in Settings, so on
@@ -292,6 +328,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateAppointment,
       refresh: runSync,
       rescheduleNow,
+      health,
+      refreshHealth,
     }),
     [
       user,
@@ -305,6 +343,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateAppointment,
       runSync,
       rescheduleNow,
+      health,
+      refreshHealth,
     ],
   );
 

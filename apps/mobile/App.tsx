@@ -15,6 +15,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppProvider, useApp } from './src/context/AppContext';
+import { recordDelivery } from './src/notifications/health';
 import SignInScreen from './src/screens/SignInScreen';
 import TodayScreen from './src/screens/TodayScreen';
 import MedicinesScreen from './src/screens/MedicinesScreen';
@@ -88,6 +89,7 @@ function Root() {
    */
   useEffect(() => {
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      void recordDelivery(response.notification);
       const data = response.notification.request.content.data as { doseId?: string } | undefined;
       const doseId = data?.doseId;
       if (!doseId) return;
@@ -102,8 +104,14 @@ function Root() {
       // A plain tap just opens the app on Today, where the dose is listed.
     });
 
+    // A reminder arriving while the app is open is a delivery sample too.
+    const received = Notifications.addNotificationReceivedListener((notification) => {
+      void recordDelivery(notification);
+    });
+
     return () => {
       responseListener.current?.remove();
+      received.remove();
     };
   }, [actOnDose]);
 

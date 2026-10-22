@@ -38,6 +38,7 @@ import {
   sharedStyles,
 } from '../components/ui';
 import { AlertTriangle, Check, Clock, Pill, SkipForward } from '../components/icons';
+import { ReminderAlertBanner } from '../components/ReminderHealth';
 
 function deviceZone(): string {
   try {
@@ -112,6 +113,10 @@ export default function TodayScreen() {
         </View>
 
         <View style={sharedStyles.stack}>
+          {/* First, because nothing else on this screen matters if the
+              reminders behind it will not ring. */}
+          <ReminderAlertBanner />
+
           {cache.syncedAt === null && (
             <Banner tone="info">
               Working offline. Your changes are saved and sync when you reconnect.
