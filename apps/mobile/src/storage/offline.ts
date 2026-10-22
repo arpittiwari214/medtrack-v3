@@ -21,7 +21,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   applyDoseAction,
+  doseEventFromPlanned,
+  expandMedicines,
   mergeDoseConflict,
+  plannedDoseFor,
   type DoseAction,
   type DoseEvent,
   type Medicine,
@@ -158,10 +161,18 @@ export async function actOnDoseLocally(
   options: { snoozeMinutes?: number; skipReason?: string | null } = {},
 ): Promise<{ cache: CachedData; dose: DoseEvent }> {
   const cache = await readCache();
-  const dose = cache.doses.find((item) => item.id === doseId);
-  if (!dose) throw new Error('That dose is not in your offline data.');
-
   const now = new Date();
+
+  // A reminder can be for a dose this phone has not synced yet — reminders run
+  // up to two weeks ahead, and a medicine may have been added offline. Rather
+  // than refuse ("not in your offline data") and lose a dose the patient really
+  // took, derive it from the medicine's schedule. The server applies the same
+  // rule when the mutation arrives, so both sides agree on the record.
+  const existing = cache.doses.find((item) => item.id === doseId);
+  const dose = existing ?? materialiseFromMedicines(cache.medicines, doseId, now);
+  if (!dose) throw new Error('That dose is not in your offline data.');
+  const baseDoses = existing ? cache.doses : [...cache.doses, dose];
+
   const patch = applyDoseAction(dose, {
     action,
     at: now,
@@ -177,7 +188,7 @@ export async function actOnDoseLocally(
 
   const nextCache: CachedData = {
     ...cache,
-    doses: cache.doses.map((item) => (item.id === doseId ? updated : item)),
+    doses: baseDoses.map((item) => (item.id === doseId ? updated : item)),
   };
   await writeCache(nextCache);
 
@@ -197,6 +208,42 @@ export async function actOnDoseLocally(
   });
 
   return { cache: nextCache, dose: updated };
+}
+
+function materialiseFromMedicines(
+  medicines: Medicine[],
+  doseId: string,
+  now: Date,
+): DoseEvent | null {
+  const medicineId = doseId.slice(0, doseId.lastIndexOf('_'));
+  const medicine = medicines.find((item) => item.id === medicineId);
+  const planned = medicine ? plannedDoseFor(medicine, doseId) : null;
+  return planned ? doseEventFromPlanned(planned, now.toISOString()) : null;
+}
+
+/**
+ * Make sure every scheduled dose in a window exists locally.
+ *
+ * The phone used to show only doses the server had generated and sent, so a
+ * medicine added offline — or a phone that had not synced since midnight —
+ * showed an empty or partial "Today". Doses are deterministic, so generating
+ * them here produces exactly the ids the server will generate; nothing is
+ * queued, because creating an unresolved dose is not something to sync.
+ */
+export async function ensureLocalDoses(from: string, to: string): Promise<CachedData> {
+  const cache = await readCache();
+  const have = new Set(cache.doses.map((dose) => dose.id));
+  const at = new Date().toISOString();
+
+  const missing = expandMedicines(cache.medicines, { from, to })
+    .filter((planned) => !have.has(planned.id))
+    .map((planned) => doseEventFromPlanned(planned, at));
+
+  if (missing.length === 0) return cache;
+
+  const next: CachedData = { ...cache, doses: [...cache.doses, ...missing] };
+  await writeCache(next);
+  return next;
 }
 
 /**

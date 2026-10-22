@@ -93,8 +93,12 @@ function Root() {
       if (!doseId) return;
 
       const action = response.actionIdentifier;
-      if (action === 'TAKEN') void actOnDose(doseId, 'take');
-      else if (action === 'SNOOZE') void actOnDose(doseId, 'snooze', 10);
+      // The same response can be delivered twice — once parked while the app
+      // was starting, once live — and acting on an already-taken dose is an
+      // illegal transition. That is a harmless duplicate, not an error.
+      const ignoreDuplicate = () => undefined;
+      if (action === 'TAKEN') actOnDose(doseId, 'take').catch(ignoreDuplicate);
+      else if (action === 'SNOOZE') actOnDose(doseId, 'snooze', 10).catch(ignoreDuplicate);
       // A plain tap just opens the app on Today, where the dose is listed.
     });
 

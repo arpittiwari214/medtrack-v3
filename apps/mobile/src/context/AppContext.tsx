@@ -5,6 +5,10 @@
  * in must seed the offline cache and schedule notifications, and signing out
  * must wipe both. Splitting them invites the state where a device is signed out
  * but still holding someone's medication data and firing their reminders.
+ *
+ * This is also the single owner of the reminder schedule. It reschedules after
+ * every change to local data, so reminders keep extending whether or not the
+ * network is there.
  */
 
 import {
@@ -18,12 +22,22 @@ import {
   type ReactNode,
 } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
-import type { Appointment, DoseAction, DoseEvent, Medicine, User } from '@medtrack/shared';
+import {
+  addDays,
+  isResolved,
+  todayIn,
+  type Appointment,
+  type DoseAction,
+  type DoseEvent,
+  type Medicine,
+  type User,
+} from '@medtrack/shared';
 import { api, setSessionEndedHandler } from '../api/client';
 import { clearTokens, getAccessToken, setTokens } from '../storage/secure';
 import {
   actOnDoseLocally,
   clearAll,
+  ensureLocalDoses,
   readCache,
   updateAppointmentLocally,
   type CachedData,
@@ -31,9 +45,13 @@ import {
 import { sync } from '../sync/index';
 import {
   cancelAllDoseReminders,
+  cancelSnooze,
   configureChannels,
+  notificationPermission,
   registerNotificationActions,
+  requestPermission,
   rescheduleReminders,
+  scheduleSnooze,
 } from '../notifications/index';
 import { SYNC_INTERVAL_MS } from '../config';
 
@@ -48,6 +66,8 @@ interface AppContextValue {
   actOnDose: (doseId: string, action: DoseAction, snoozeMinutes?: number) => Promise<DoseEvent>;
   updateAppointment: (appointmentId: string, patch: Partial<Appointment>) => Promise<Appointment>;
   refresh: () => Promise<void>;
+  /** Re-run the reminder schedule, replacing everything when `force` is set. */
+  rescheduleNow: (force?: boolean) => Promise<number>;
 }
 
 const EMPTY_CACHE: CachedData = {
@@ -59,6 +79,20 @@ const EMPTY_CACHE: CachedData = {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+function deviceZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+  } catch {
+    return 'Asia/Kolkata';
+  }
+}
+
+/** Yesterday to tomorrow — enough for Today, a late "taken", and midnight. */
+async function withLocalDoses(timezone: string): Promise<CachedData> {
+  const today = todayIn(timezone);
+  return ensureLocalDoses(addDays(today, -1), addDays(today, 1));
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,23 +101,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
 
   const appState = useRef<AppStateStatus>(AppState.currentState);
+  const askedForPermission = useRef(false);
+
 
   /* ── Bootstrap ── */
 
   useEffect(() => {
     setSessionEndedHandler(() => {
       setUser(null);
+      void cancelAllDoseReminders();
       void clearAll();
     });
 
     void (async () => {
+      // Channels before anything that could prompt: on Android 13+ the
+      // permission dialog does not appear until a channel exists.
       await configureChannels();
       await registerNotificationActions();
 
       // Show cached data immediately, before any network call. On a cold start
       // with no signal the app is still fully usable.
-      const cached = await readCache();
-      setCache(cached);
+      setCache(await withLocalDoses(deviceZone()));
 
       const token = await getAccessToken();
       if (!token) {
@@ -110,7 +148,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSyncing(true);
     try {
       const outcome = await sync();
-      if (outcome.cache) setCache(outcome.cache);
+      // Generate today's doses locally either way, so an offline phone still
+      // rolls over at midnight and shows the new day.
+      setCache(await withLocalDoses(deviceZone()));
 
       if (outcome.offline) setLastSyncError(null);
       else if (!outcome.ok) setLastSyncError('Could not sync with the server.');
@@ -137,6 +177,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(() => void runSync(), SYNC_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [user, runSync]);
+
+  /* ── Reminders ── */
+
+  const resolvedDoseIds = useMemo(
+    () => new Set(cache.doses.filter((dose) => isResolved(dose.status)).map((dose) => dose.id)),
+    [cache.doses],
+  );
+
+  const rescheduleNow = useCallback(
+    (force = false) =>
+      rescheduleReminders(cache.medicines as Medicine[], { resolvedDoseIds, force }),
+    [cache.medicines, resolvedDoseIds],
+  );
+
+  // Every change to local data re-plans reminders — after a sync, an action,
+  // or a medicine edit, online or not. Debounced, because a sync can land
+  // several state updates in a row.
+  useEffect(() => {
+    if (!user) return;
+    const timer = setTimeout(() => void rescheduleNow(), 400);
+    return () => clearTimeout(timer);
+  }, [user, rescheduleNow]);
+
+  // Ask for notification permission once there is something to remind about.
+  // Nothing asked before: the only route was a button deep in Settings, so on
+  // Android 13+ a new user simply never received a reminder.
+  useEffect(() => {
+    if (!user || askedForPermission.current || cache.medicines.length === 0) return;
+    askedForPermission.current = true;
+    void (async () => {
+      if ((await notificationPermission()) === 'undetermined') {
+        const result = await requestPermission();
+        if (result.granted) await rescheduleNow();
+      }
+    })();
+  }, [user, cache.medicines.length, rescheduleNow]);
 
   /* ── Actions ── */
 
@@ -177,6 +253,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       setCache(nextCache);
 
+      if (action === 'snooze' && snoozeMinutes !== undefined) {
+        await scheduleSnooze(doseId, dose.medicineName, snoozeMinutes);
+      } else {
+        // Taken, skipped or undone: a pending follow-up would nag about a dose
+        // that is already dealt with.
+        await cancelSnooze(doseId);
+      }
+
       // Fire and forget — the change is already durable in the outbox, so the
       // UI must not wait on the network to feel responsive.
       void runSync();
@@ -189,19 +273,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (appointmentId: string, patch: Partial<Appointment>) => {
       const { cache: nextCache, appointment } = await updateAppointmentLocally(appointmentId, patch);
       setCache(nextCache);
-      // Fire and forget — the change is already durable in the outbox, so the
-      // UI must not wait on the network to feel responsive.
       void runSync();
       return appointment;
     },
     [runSync],
   );
-
-  // Keep the OS notification schedule aligned with the medicine list.
-  useEffect(() => {
-    if (!user || cache.medicines.length === 0) return;
-    void rescheduleReminders(cache.medicines as Medicine[]);
-  }, [user, cache.medicines]);
 
   const value = useMemo(
     () => ({
@@ -215,8 +291,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actOnDose,
       updateAppointment,
       refresh: runSync,
+      rescheduleNow,
     }),
-    [user, loading, cache, syncing, lastSyncError, signIn, signOut, actOnDose, updateAppointment, runSync],
+    [
+      user,
+      loading,
+      cache,
+      syncing,
+      lastSyncError,
+      signIn,
+      signOut,
+      actOnDose,
+      updateAppointment,
+      runSync,
+      rescheduleNow,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

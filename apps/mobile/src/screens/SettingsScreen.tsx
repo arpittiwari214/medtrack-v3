@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, ScrollView, Text, View } from 'react-native';
 import { useApp } from '../context/AppContext';
-import {
-  pendingReminderCount,
-  requestPermission,
-  rescheduleReminders,
-} from '../notifications/index';
+import { pendingReminderCount, requestPermission } from '../notifications/index';
 import { readOutbox } from '../storage/offline';
 import { spacing, type, useTheme } from '../theme';
 import {
@@ -22,7 +18,7 @@ import { AlertTriangle } from '../components/icons';
 
 export default function SettingsScreen() {
   const c = useTheme();
-  const { user, cache, signOut, refresh, syncing } = useApp();
+  const { user, cache, signOut, refresh, syncing, rescheduleNow } = useApp();
 
   const [scheduled, setScheduled] = useState(0);
   const [queued, setQueued] = useState(0);
@@ -49,7 +45,7 @@ export default function SettingsScreen() {
     setPermission(result.granted ? 'granted' : 'denied');
 
     if (result.granted) {
-      await rescheduleReminders(cache.medicines);
+      await rescheduleNow();
       await loadDiagnostics();
       return;
     }

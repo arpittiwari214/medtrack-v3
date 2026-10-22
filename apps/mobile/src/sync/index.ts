@@ -21,7 +21,6 @@ import {
   writeCursor,
   type CachedData,
 } from '../storage/offline';
-import { rescheduleReminders } from '../notifications/index';
 
 interface SyncResponse {
   results: { mutationId: string; outcome: string; reason?: string }[];
@@ -71,9 +70,10 @@ async function runSync(): Promise<SyncOutcome> {
     const cache = await mergeServerChanges(response.changes);
     await writeCursor(response.cursor);
 
-    // Medicines may have changed elsewhere, so the local notification schedule
-    // is rebuilt from whatever the cache now holds.
-    await rescheduleReminders(cache.medicines);
+    // Reminders are deliberately not rescheduled here. That used to sit after
+    // the network call, so an offline device never extended its reminders —
+    // the app that works without signal stopped reminding without signal.
+    // AppContext reschedules on every cache change, online or not.
 
     const rejected = response.results
       .filter((result) => result.outcome === 'rejected')
