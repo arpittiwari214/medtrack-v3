@@ -150,34 +150,43 @@ const [upcomingRes, pastRes] = await Promise.all([
   call('/appointments?scope=upcoming', { token }),
   call('/appointments?scope=past', { token }),
 ]);
-const existingTitles = new Set(
-  [...(upcomingRes.json?.appointments ?? []), ...(pastRes.json?.appointments ?? [])].map((a) =>
+const existingByTitle = new Map(
+  [...(upcomingRes.json?.appointments ?? []), ...(pastRes.json?.appointments ?? [])].map((a) => [
     a.title.toLowerCase(),
-  ),
+    a,
+  ]),
 );
 
 for (const appointment of APPOINTMENTS) {
-  // Same reasoning as medicines: dates are relative to today, so nothing in
-  // the API's own uniqueness check stops a re-run duplicating these.
-  if (existingTitles.has(appointment.title.toLowerCase())) continue;
+  // Upsert rather than skip. Dates here are relative to today, so skipping an
+  // existing one left the demo's "upcoming" list empty once the seed was a few
+  // weeks old — which is exactly the state the Appointments screen is meant to
+  // show. Patching the date keeps it idempotent *and* keeps it useful.
+  const body = {
+    kind: appointment.kind,
+    title: appointment.title,
+    localDate: addDays(today, appointment.offsetDays),
+    localTime: appointment.localTime,
+    provider: appointment.provider,
+    location: appointment.location,
+    notes: appointment.notes,
+    requiresFasting: appointment.requiresFasting,
+    durationMinutes: 30,
+    reminderOffsetsMinutes: [1440, 60],
+  };
 
-  const res = await call('/appointments', {
-    method: 'POST',
-    token,
-    body: {
-      kind: appointment.kind,
-      title: appointment.title,
-      localDate: addDays(today, appointment.offsetDays),
-      localTime: appointment.localTime,
-      provider: appointment.provider,
-      location: appointment.location,
-      notes: appointment.notes,
-      requiresFasting: appointment.requiresFasting,
-      durationMinutes: 30,
-      reminderOffsetsMinutes: [1440, 60],
-    },
-  });
-  if (res.status !== 201) console.warn(`  ${appointment.title}: http ${res.status}`);
+  const found = existingByTitle.get(appointment.title.toLowerCase());
+  const res = found
+    ? await call(`/appointments/${found.id}`, {
+        method: 'PATCH',
+        token,
+        // A past appointment that has rolled forward is scheduled again.
+        body: { ...body, status: appointment.offsetDays < 0 ? 'completed' : 'scheduled' },
+      })
+    : await call('/appointments', { method: 'POST', token, body });
+
+  const expected = found ? 200 : 201;
+  if (res.status !== expected) console.warn(`  ${appointment.title}: http ${res.status}`);
 }
 
 /* ── History ─────────────────────────────────────────────────────────────── */
