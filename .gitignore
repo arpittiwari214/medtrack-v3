@@ -22,8 +22,8 @@ build/
 *.p12
 *.key
 *.mobileprovision
-android/
-ios/
+apps/mobile/android/
+apps/mobile/ios/
 
 # Logs
 logs/
