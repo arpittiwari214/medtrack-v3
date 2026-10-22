@@ -1,3 +1,4 @@
+import type { MedicineColor } from './recognition.js';
 /**
  * MedTrack domain types.
  *
@@ -166,6 +167,14 @@ export interface Medicine {
   prescribedBy?: string | null;
   /** Missing one dose of a critical medicine escalates immediately. */
   isCritical: boolean;
+  /**
+   * How the patient recognises it. Most Indian patients identify a medicine by
+   * colour rather than by name; see recognition.ts.
+   */
+  pillColor?: MedicineColor | null;
+  stripColor?: MedicineColor | null;
+  /** The patient's own words for what it is for: "BP", "sugar", "थायराइड". */
+  purpose?: string | null;
   /** Null when the patient is not tracking supply for this medicine. */
   stock?: StockInfo | null;
   /** Grace period before a due dose counts as missed. Overrides the default. */

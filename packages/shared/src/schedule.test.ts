@@ -296,3 +296,22 @@ describe('run-out forecast matches walking every dose', () => {
     }
   }
 });
+
+describe('recognition', () => {
+  it('describes a medicine the way a patient sees it', async () => {
+    const { describeMedicine } = await import('./recognition.js');
+    expect(describeMedicine({ name: 'Telma 40', form: 'tablet', pillColor: 'white', purpose: 'BP' })).toBe(
+      'White tablet for BP',
+    );
+    expect(describeMedicine({ name: 'Telma 40', form: 'tablet', pillColor: 'white' })).toBe('White tablet');
+    expect(describeMedicine({ name: 'Telma 40', purpose: 'BP' })).toBe('Telma 40 for BP');
+    expect(describeMedicine({ name: 'Telma 40' })).toBe('Telma 40');
+  });
+
+  it('writes Indian prescription notation', async () => {
+    const { slotNotation } = await import('./recognition.js');
+    expect(slotNotation(['08:00', '21:00'])).toBe('1-0-1');
+    expect(slotNotation(['08:00', '14:00', '21:00'])).toBe('1-1-1');
+    expect(slotNotation(['21:30'])).toBe('0-0-1');
+  });
+});

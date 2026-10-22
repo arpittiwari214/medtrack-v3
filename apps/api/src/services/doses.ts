@@ -58,6 +58,9 @@ export interface MedicineSource {
   form: string;
   timezone: string;
   isCritical: boolean;
+  pillColor?: string | null | undefined;
+  stripColor?: string | null | undefined;
+  purpose?: string | null | undefined;
   instructions?: string | null | undefined;
   prescribedBy?: string | null | undefined;
   missedAfterMinutes?: number | null | undefined;
@@ -94,6 +97,9 @@ export function toDomainMedicine(doc: MedicineSource): MedicineShape {
     form: doc.form as MedicineShape['form'],
     timezone: doc.timezone,
     isCritical: doc.isCritical,
+    pillColor: (doc.pillColor ?? null) as MedicineShape['pillColor'],
+    stripColor: (doc.stripColor ?? null) as MedicineShape['stripColor'],
+    purpose: doc.purpose ?? null,
     instructions: doc.instructions ?? '',
     prescribedBy: doc.prescribedBy ?? null,
     missedAfterMinutes: doc.missedAfterMinutes ?? null,

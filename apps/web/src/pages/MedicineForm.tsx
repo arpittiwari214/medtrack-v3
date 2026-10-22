@@ -10,10 +10,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { MedicineForm as MedicineFormType, ScheduleKind, Weekday } from '@medtrack/shared';
-import { todayIn } from '@medtrack/shared';
+import { todayIn, type MedicineColor } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { medicinesApi } from '../api/endpoints.js';
 import { ErrorBanner, ScreenHeader, Spinner } from '../components/ui.js';
+import { ColorPicker, SlotPicker } from '../components/recognition.js';
 
 const FORMS: { value: MedicineFormType; label: string }[] = [
   { value: 'tablet', label: 'Tablet' },
@@ -68,6 +69,9 @@ export default function MedicineForm() {
   const [form, setForm] = useState<MedicineFormType>('tablet');
   const [instructions, setInstructions] = useState('');
   const [isCritical, setIsCritical] = useState(false);
+  const [pillColor, setPillColor] = useState<MedicineColor | null>(null);
+  const [stripColor, setStripColor] = useState<MedicineColor | null>(null);
+  const [purpose, setPurpose] = useState('');
 
   const [kind, setKind] = useState<ScheduleKind>('daily');
   const [times, setTimes] = useState<string[]>(['08:00']);
@@ -96,6 +100,9 @@ export default function MedicineForm() {
         setForm(medicine.form);
         setInstructions(medicine.instructions ?? '');
         setIsCritical(medicine.isCritical);
+        setPillColor(medicine.pillColor ?? null);
+        setStripColor(medicine.stripColor ?? null);
+        setPurpose(medicine.purpose ?? '');
         setKind(medicine.schedule.kind);
         setTimes(medicine.schedule.times.length > 0 ? medicine.schedule.times : ['08:00']);
         setStartDate(medicine.schedule.startDate);
@@ -147,6 +154,9 @@ export default function MedicineForm() {
       form,
       instructions,
       isCritical,
+      pillColor,
+      stripColor,
+      purpose: purpose.trim() || null,
       schedule: {
         kind,
         times: kind === 'as_needed' ? [] : times,
@@ -186,6 +196,29 @@ export default function MedicineForm() {
 
       {error && <ErrorBanner message={error} />}
 
+      {/* Recognition first. Most patients identify a medicine by its colour,
+          not its name — see shared/recognition.ts for the evidence. */}
+      <section className="panel panel-pad stack">
+        <h2 className="t-lg">How do you recognise it?</h2>
+        <ColorPicker label="Tablet colour" name="pill-color" value={pillColor} onChange={setPillColor} />
+        <ColorPicker label="Strip colour" name="strip-color" value={stripColor} onChange={setStripColor} />
+        <div className="field">
+          <label className="label" htmlFor="purpose">
+            What is it for? (in your own words)
+          </label>
+          <input
+            id="purpose"
+            className="input"
+            maxLength={40}
+            placeholder="e.g. BP, sugar, thyroid"
+            value={purpose}
+            aria-invalid={Boolean(fieldErrors['purpose'])}
+            onChange={(event) => setPurpose(event.target.value)}
+          />
+          {fieldErrors['purpose'] && <span className="field-error">{fieldErrors['purpose']}</span>}
+        </div>
+      </section>
+
       <section className="panel panel-pad stack">
         <div className="field">
           <label className="label" htmlFor="name">
@@ -205,12 +238,11 @@ export default function MedicineForm() {
 
         <div className="field">
           <label className="label" htmlFor="strength">
-            Strength or dose
+            Strength or dose (optional — it is printed on the strip)
           </label>
           <input
             id="strength"
             className="input"
-            required
             placeholder="e.g. 500 mg, 2 puffs"
             value={strength}
             aria-invalid={Boolean(fieldErrors['strength'])}
@@ -339,9 +371,11 @@ export default function MedicineForm() {
           </div>
         )}
 
+        {kind !== 'as_needed' && <SlotPicker times={times} onChange={setTimes} />}
+
         {kind !== 'as_needed' && (
           <div className="field">
-            <span className="label">Times of day</span>
+            <span className="label">Exact times</span>
             {times.map((time, index) => (
               <div key={index} className="row" style={{ gap: 'var(--s2)' }}>
                 <input

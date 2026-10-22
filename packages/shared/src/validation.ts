@@ -10,6 +10,7 @@
  */
 
 import { z } from 'zod';
+import { MEDICINE_COLORS } from './recognition.js';
 import { isValidLocalDate, isValidLocalTime, isValidTimeZone } from './time.js';
 
 /* ──────────────────────────────── Primitives ────────────────────────────── */
@@ -185,12 +186,17 @@ export const createMedicineSchema = z.object({
   /** Client-supplied so an offline device can create without a round-trip. */
   id: idSchema.optional(),
   name: z.string().trim().min(1, 'What is the medicine called?').max(200),
-  strength: z.string().trim().min(1, 'Add the strength, e.g. 500 mg.').max(100),
+  // Optional: it is printed on the strip, and the strip photo captures it. A
+  // patient who cannot read it must still be able to add the medicine.
+  strength: z.string().trim().max(100).default(''),
   form: medicineFormSchema.default('tablet'),
   schedule: doseScheduleSchema,
   instructions: z.string().trim().max(1000).optional(),
   prescribedBy: z.string().trim().max(200).nullish(),
   isCritical: z.boolean().default(false),
+  pillColor: z.enum(MEDICINE_COLORS).nullish(),
+  stripColor: z.enum(MEDICINE_COLORS).nullish(),
+  purpose: z.string().trim().max(40, 'Keep it short — a word or two.').nullish(),
   stock: stockSchema.nullish(),
   missedAfterMinutes: z.number().int().min(5).max(1440).nullish(),
 });

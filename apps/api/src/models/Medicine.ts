@@ -9,6 +9,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
+import { MEDICINE_COLORS } from '@medtrack/shared';
 
 const scheduleSchema = new Schema(
   {
@@ -46,7 +47,8 @@ const medicineSchema = new Schema(
     userId: { type: String, required: true, ref: 'User', index: true },
 
     name: { type: String, required: true, trim: true, maxlength: 200 },
-    strength: { type: String, required: true, trim: true, maxlength: 100 },
+    // Optional: printed on the strip, which the phone photographs.
+    strength: { type: String, default: '', trim: true, maxlength: 100 },
     form: {
       type: String,
       required: true,
@@ -61,6 +63,11 @@ const medicineSchema = new Schema(
     instructions: { type: String, default: '', trim: true, maxlength: 1000 },
     prescribedBy: { type: String, default: null, trim: true, maxlength: 200 },
     isCritical: { type: Boolean, default: false },
+
+    /** How the patient recognises it — see shared/recognition.ts. */
+    pillColor: { type: String, default: null, enum: [...MEDICINE_COLORS, null] },
+    stripColor: { type: String, default: null, enum: [...MEDICINE_COLORS, null] },
+    purpose: { type: String, default: null, trim: true, maxlength: 40 },
 
     stock: { type: stockSchema, default: null },
     missedAfterMinutes: { type: Number, default: null, min: 5, max: 1440 },

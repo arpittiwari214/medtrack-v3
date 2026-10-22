@@ -26,9 +26,9 @@ const TZ = 'Asia/Kolkata';
 const HISTORY_DAYS = 34;
 
 const MEDICINES = [
-  { name: 'Metformin', strength: '500 mg', times: ['08:00', '21:00'], isCritical: false, stock: 26 },
-  { name: 'Amlodipine', strength: '5 mg', times: ['09:00'], isCritical: true, stock: 9 },
-  { name: 'Atorvastatin', strength: '10 mg', times: ['22:00'], isCritical: false, stock: 4 },
+  { name: 'Metformin', strength: '500 mg', times: ['08:00', '21:00'], isCritical: false, stock: 26, pillColor: 'white', stripColor: 'silver', purpose: 'sugar' },
+  { name: 'Amlodipine', strength: '5 mg', times: ['09:00'], isCritical: true, stock: 9, pillColor: 'yellow', stripColor: 'blue', purpose: 'BP' },
+  { name: 'Atorvastatin', strength: '10 mg', times: ['22:00'], isCritical: false, stock: 4, pillColor: 'orange', stripColor: 'gold', purpose: 'cholesterol' },
 ];
 
 async function call(path, { method = 'GET', body, token } = {}) {
@@ -85,12 +85,22 @@ const startDate = addDays(today, -HISTORY_DAYS);
  * idempotent, which is what this script promises.
  */
 const existing = await call('/medicines', { token });
-const existingNames = new Set(
-  (existing.json?.medicines ?? []).map((m) => m.name.toLowerCase()),
+const existingByName = new Map(
+  (existing.json?.medicines ?? []).map((m) => [m.name.toLowerCase(), m]),
 );
 
 for (const medicine of MEDICINES) {
-  if (existingNames.has(medicine.name.toLowerCase())) continue;
+  const recognition = {
+    pillColor: medicine.pillColor,
+    stripColor: medicine.stripColor,
+    purpose: medicine.purpose,
+  };
+  const found = existingByName.get(medicine.name.toLowerCase());
+  if (found) {
+    // Keep the demo's recognition cues current without duplicating anything.
+    await call(`/medicines/${found.id}`, { method: 'PATCH', token, body: recognition });
+    continue;
+  }
 
   const res = await call('/medicines', {
     method: 'POST',
@@ -100,6 +110,7 @@ for (const medicine of MEDICINES) {
       strength: medicine.strength,
       form: 'tablet',
       isCritical: medicine.isCritical,
+      ...recognition,
       schedule: { kind: 'daily', times: medicine.times, startDate },
       stock: { unitsRemaining: medicine.stock, unitsPerDose: 1, lowThreshold: 6 },
     },

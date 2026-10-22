@@ -218,6 +218,36 @@ describe('medicines', () => {
     expect(duplicate.status).toBe(409);
   });
 
+  it('stores how the patient recognises a medicine, and does not require strength', async () => {
+    const account = await signup();
+    const response = await authed(account)(request(app).post('/api/medicines')).send({
+      name: 'Telma 40',
+      pillColor: 'white',
+      stripColor: 'silver',
+      purpose: 'BP',
+      schedule: { kind: 'daily', times: ['08:00'], startDate: TODAY_IST },
+    });
+
+    // A patient who cannot read the strip must still be able to add it.
+    expect(response.status).toBe(201);
+    expect(response.body.medicine).toMatchObject({
+      pillColor: 'white',
+      stripColor: 'silver',
+      purpose: 'BP',
+      strength: '',
+    });
+  });
+
+  it('rejects a colour outside the fixed list', async () => {
+    const account = await signup();
+    const response = await authed(account)(request(app).post('/api/medicines')).send({
+      name: 'Telma 40',
+      pillColor: 'mauve',
+      schedule: { kind: 'daily', times: ['08:00'], startDate: TODAY_IST },
+    });
+    expect(response.status).toBe(400);
+  });
+
   it('archives rather than deletes, preserving dose history', async () => {
     const account = await signup();
     const medicine = await createMedicine(account);

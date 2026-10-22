@@ -106,6 +106,9 @@ router.post('/', validate(createMedicineSchema), async (req, res, next) => {
       instructions: input.instructions ?? '',
       prescribedBy: input.prescribedBy ?? null,
       isCritical: input.isCritical,
+      pillColor: input.pillColor ?? null,
+      stripColor: input.stripColor ?? null,
+      purpose: input.purpose ?? null,
       stock: input.stock ?? null,
       missedAfterMinutes: input.missedAfterMinutes ?? null,
     });
@@ -145,6 +148,9 @@ router.patch('/:id', validate(updateMedicineSchema), async (req, res, next) => {
     if (input.instructions !== undefined) medicine.instructions = input.instructions;
     if (input.prescribedBy !== undefined) medicine.prescribedBy = input.prescribedBy ?? null;
     if (input.isCritical !== undefined) medicine.isCritical = input.isCritical;
+    if (input.pillColor !== undefined) medicine.pillColor = input.pillColor ?? null;
+    if (input.stripColor !== undefined) medicine.stripColor = input.stripColor ?? null;
+    if (input.purpose !== undefined) medicine.purpose = input.purpose ?? null;
     if (input.missedAfterMinutes !== undefined) {
       medicine.missedAfterMinutes = input.missedAfterMinutes ?? null;
     }

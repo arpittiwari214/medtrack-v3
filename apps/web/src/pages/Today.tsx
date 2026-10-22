@@ -12,12 +12,39 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SNOOZE_PRESETS, formatTime12h, type DoseEvent, type DoseStatus } from '@medtrack/shared';
+import {
+  SNOOZE_PRESETS,
+  describeMedicine,
+  formatLocalDate,
+  formatTime12h,
+  isLowStock,
+  type Appointment,
+  type DoseEvent,
+  type DoseStatus,
+} from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
-import { alertsApi, dosesApi, type TodayResponse } from '../api/endpoints.js';
+import {
+  alertsApi,
+  appointmentsApi,
+  dosesApi,
+  medicinesApi,
+  type MedicineWithStock,
+  type TodayResponse,
+} from '../api/endpoints.js';
+import { ColorDot } from '../components/recognition.js';
 import { useAuth } from '../context/AuthContext.js';
 import { ErrorBanner, Modal, Spinner } from '../components/ui.js';
-import { AlertTriangle, Check, Clock, Info, Pill, SkipForward, Undo } from '../components/icons.js';
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  Clock,
+  Info,
+  Package,
+  Pill,
+  SkipForward,
+  Undo,
+} from '../components/icons.js';
 import './today.css';
 
 const STATE_LABEL: Record<DoseStatus, string> = {
@@ -35,11 +62,25 @@ export default function Today() {
   const [loading, setLoading] = useState(true);
   const [snoozeTarget, setSnoozeTarget] = useState<DoseEvent | null>(null);
   const [sosOpen, setSosOpen] = useState(false);
+  const [medicines, setMedicines] = useState<Map<string, MedicineWithStock>>(new Map());
+  const [nextVisit, setNextVisit] = useState<Appointment | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     setError('');
     try {
-      setData(await dosesApi.today());
+      // Doses drive the screen; medicines and visits enrich it. A failure in
+      // either of those must not blank the dose list.
+      const [today, meds, visits] = await Promise.allSettled([
+        dosesApi.today(),
+        medicinesApi.list(),
+        appointmentsApi.list('upcoming'),
+      ]);
+      if (today.status === 'rejected') throw today.reason;
+      setData(today.value);
+      if (meds.status === 'fulfilled') {
+        setMedicines(new Map(meds.value.medicines.map((m) => [m.id, m])));
+      }
+      if (visits.status === 'fulfilled') setNextVisit(visits.value.appointments[0] ?? null);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Could not load today’s doses.');
     } finally {
@@ -137,6 +178,7 @@ export default function Today() {
       ) : focus ? (
         <NextDose
           dose={focus}
+          medicine={medicines.get(focus.medicineId)}
           onTake={() => act(focus, 'take')}
           onSnooze={() => setSnoozeTarget(focus)}
           onSkip={() => act(focus, 'skip')}
@@ -152,6 +194,8 @@ export default function Today() {
           </p>
         </div>
       )}
+
+      <CarePanel medicines={[...medicines.values()]} nextVisit={nextVisit} />
 
       {total > 0 && (
         <>
@@ -180,6 +224,7 @@ export default function Today() {
               <RailRow
                 key={dose.id}
                 dose={dose}
+                medicine={medicines.get(dose.medicineId)}
                 onUndo={() => act(dose, 'undo')}
                 onTake={() => act(dose, 'take')}
               />
@@ -215,28 +260,41 @@ export default function Today() {
 
 function NextDose({
   dose,
+  medicine,
   onTake,
   onSnooze,
   onSkip,
 }: {
   dose: DoseEvent;
+  medicine: MedicineWithStock | undefined;
   onTake: () => void;
   onSnooze: () => void;
   onSkip: () => void;
 }) {
   const overdue = dose.status === 'missed';
+  // A scheduled dose already past its time is not "next" — it is due now.
+  const pastDue = !overdue && new Date(dose.scheduledAt).getTime() < Date.now();
 
   return (
     <section className={`panel${dose.isCritical ? ' panel-critical' : ''}`}>
       <div className="panel-head">
-        <span className="micro">{overdue ? 'Overdue' : 'Next dose'}</span>
+        <span className="micro">{overdue ? 'Overdue' : pastDue ? 'Due now' : 'Next dose'}</span>
         <span className="t-xs muted numeric">{relativeTo(dose.scheduledAt)}</span>
       </div>
 
       <div className="panel-pad">
-        <h2 className="next-dose-name">{dose.medicineName}</h2>
+        {/* What the patient sees on the strip leads; the name supports it. */}
+        <div className="row" style={{ gap: 'var(--s2)' }}>
+          <ColorDot color={medicine?.pillColor} size={22} />
+          <ColorDot color={medicine?.stripColor} size={22} />
+          <h2 className="next-dose-name">
+            {medicine ? describeMedicine(medicine) : dose.medicineName}
+          </h2>
+        </div>
         <p className="next-dose-meta">
-          {dose.medicineStrength} · {formatTime12h(dose.localTime)}
+          {medicine && (medicine.pillColor || medicine.purpose) ? `${dose.medicineName} · ` : ''}
+          {dose.medicineStrength ? `${dose.medicineStrength} · ` : ''}
+          {formatTime12h(dose.localTime)}
           {dose.isCritical && ' · Critical'}
         </p>
 
@@ -270,10 +328,12 @@ function NextDose({
 
 function RailRow({
   dose,
+  medicine,
   onUndo,
   onTake,
 }: {
   dose: DoseEvent;
+  medicine: MedicineWithStock | undefined;
   onUndo: () => void;
   onTake: () => void;
 }) {
@@ -294,7 +354,9 @@ function RailRow({
         <span className={`rail-dot rail-dot-${dose.status}`} />
       </span>
       <span className="rail-name">
+        <ColorDot color={medicine?.pillColor} />{' '}
         {dose.medicineName} <span className="rail-strength">{dose.medicineStrength}</span>
+        {medicine?.purpose && <span className="purpose-tag">{medicine.purpose}</span>}
         {dose.isCritical && <span className="rail-critical" aria-label="Critical" />}
       </span>
       <span className={`rail-state rail-state-${dose.status}`}>
@@ -365,6 +427,81 @@ function SosModal({ onClose }: { onClose: () => void }) {
         </div>
       )}
     </Modal>
+  );
+}
+
+/**
+ * Supply and the next visit, on the home screen.
+ *
+ * In India the bigger failure is not a missed evening dose but falling out of
+ * care: running out and not refilling, or never going back to the doctor —
+ * 43% of patients in one national programme never returned for a first
+ * follow-up. So these sit next to the doses rather than in a menu.
+ */
+function CarePanel({
+  medicines,
+  nextVisit,
+}: {
+  medicines: MedicineWithStock[];
+  /** undefined while unknown, null when nothing is booked. */
+  nextVisit: Appointment | null | undefined;
+}) {
+  const running = medicines
+    .filter((m) => !m.archivedAt && m.stock && isLowStock(m))
+    .sort((a, b) => (a.projectedRunOut ?? '9999').localeCompare(b.projectedRunOut ?? '9999'))
+    .slice(0, 3);
+
+  if (running.length === 0 && nextVisit === undefined) return null;
+
+  return (
+    <section className="panel mt-4" aria-label="Supply and visits">
+      <div className="panel-head">
+        <span className="micro">Supply and visits</span>
+      </div>
+      <div className="list" style={{ border: 'none', borderRadius: 0 }}>
+        {running.map((m) => (
+          <Link key={m.id} to="/app/medicines" className="list-row list-row-link">
+            <Package size={18} />
+            <span className="flex-1">
+              <span className="list-title">
+                <ColorDot color={m.pillColor} /> {m.name}
+              </span>
+              <span className="subtle" style={{ display: 'block' }}>
+                {m.dosesRemaining ?? 0} {m.dosesRemaining === 1 ? 'dose' : 'doses'} left
+                {m.projectedRunOut && ` · runs out around ${formatLocalDate(m.projectedRunOut)}`}
+              </span>
+            </span>
+            <span className="badge badge-warn">Refill</span>
+          </Link>
+        ))}
+
+        {nextVisit === null && (
+          <Link to="/app/appointments" className="list-row list-row-link">
+            <Calendar size={18} />
+            <span className="flex-1">
+              <span className="list-title">No visit booked</span>
+              <span className="subtle" style={{ display: 'block' }}>
+                Add your next check-up and we will remind you the day before.
+              </span>
+            </span>
+          </Link>
+        )}
+
+        {nextVisit && (
+          <Link to="/app/appointments" className="list-row list-row-link">
+            <Calendar size={18} />
+            <span className="flex-1">
+              <span className="list-title">{nextVisit.title}</span>
+              <span className="subtle numeric" style={{ display: 'block' }}>
+                {formatLocalDate(nextVisit.localDate)} · {formatTime12h(nextVisit.localTime)}
+                {nextVisit.provider && ` · ${nextVisit.provider}`}
+              </span>
+            </span>
+            {nextVisit.requiresFasting && <span className="badge badge-warn">Fasting</span>}
+          </Link>
+        )}
+      </div>
+    </section>
   );
 }
 

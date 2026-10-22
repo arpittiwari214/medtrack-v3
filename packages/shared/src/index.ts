@@ -11,6 +11,7 @@ export * from './schedule.js';
 export * from './dose-status.js';
 export * from './adherence.js';
 export * from './validation.js';
+export * from './recognition.js';
 
 /** Document versions. Bumping one forces affected users to re-consent on next sign-in. */
 export const LEGAL_DOCUMENT_VERSIONS = {
