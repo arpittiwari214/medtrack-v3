@@ -27,13 +27,11 @@ import {
   toDomainMedicine,
   type MedicineSource,
 } from '../services/doses.js';
+import { applyMedicineUpdate, medicineFields } from '../services/writes.js';
 import { addDays, todayIn } from '@medtrack/shared';
 
 const router = Router();
 router.use(requireAuth);
-
-/** Fields whose change alters *when* doses fall, and so require regeneration. */
-const SCHEDULE_FIELDS = ['schedule', 'missedAfterMinutes'] as const;
 
 /* ─────────────────────────────── Read ──────────────────────────────────── */
 
@@ -98,19 +96,7 @@ router.post('/', validate(createMedicineSchema), async (req, res, next) => {
       // Accepting a client id lets an offline device create without waiting.
       _id: input.id ?? randomUUID(),
       userId,
-      name: input.name,
-      strength: input.strength,
-      form: input.form,
-      schedule: input.schedule,
-      timezone: user.timezone,
-      instructions: input.instructions ?? '',
-      prescribedBy: input.prescribedBy ?? null,
-      isCritical: input.isCritical,
-      pillColor: input.pillColor ?? null,
-      stripColor: input.stripColor ?? null,
-      purpose: input.purpose ?? null,
-      stock: input.stock ?? null,
-      missedAfterMinutes: input.missedAfterMinutes ?? null,
+      ...medicineFields(input, user.timezone),
     });
 
     // Materialise this medicine's doses only — v3 rebuilt every user's agenda
@@ -139,28 +125,7 @@ router.patch('/:id', validate(updateMedicineSchema), async (req, res, next) => {
     const medicine = await Medicine.findOne({ _id: req.params['id'], userId });
     if (!medicine) throw AppError.notFound('That medicine could not be found.');
 
-    const scheduleChanged = SCHEDULE_FIELDS.some((field) => input[field] !== undefined);
-
-    if (input.name !== undefined) medicine.name = input.name;
-    if (input.strength !== undefined) medicine.strength = input.strength;
-    if (input.form !== undefined) medicine.form = input.form;
-    if (input.schedule !== undefined) medicine.schedule = input.schedule;
-    if (input.instructions !== undefined) medicine.instructions = input.instructions;
-    if (input.prescribedBy !== undefined) medicine.prescribedBy = input.prescribedBy ?? null;
-    if (input.isCritical !== undefined) medicine.isCritical = input.isCritical;
-    if (input.pillColor !== undefined) medicine.pillColor = input.pillColor ?? null;
-    if (input.stripColor !== undefined) medicine.stripColor = input.stripColor ?? null;
-    if (input.purpose !== undefined) medicine.purpose = input.purpose ?? null;
-    if (input.missedAfterMinutes !== undefined) {
-      medicine.missedAfterMinutes = input.missedAfterMinutes ?? null;
-    }
-    if (input.stock !== undefined) {
-      medicine.stock = input.stock ?? null;
-      // Editing the supply re-arms the low-stock warning.
-      medicine.lowStockNotifiedAt = null;
-    }
-
-    medicine.rev += 1;
+    const { scheduleChanged } = applyMedicineUpdate(medicine, input);
     await medicine.save();
 
     if (scheduleChanged) {

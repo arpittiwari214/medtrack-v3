@@ -326,6 +326,18 @@ export const sosSchema = z.object({
 
 /* ─────────────────────────────── Offline sync ───────────────────────────── */
 
+/**
+ * The fields a client may change on a dose through sync. Identity and the
+ * prescribed time are never client-writable; the server keeps its own.
+ */
+export const syncDosePayloadSchema = z.object({
+  status: z.enum(['scheduled', 'snoozed', 'taken', 'skipped', 'missed']),
+  takenAt: instantSchema.nullish(),
+  snoozedUntil: instantSchema.nullish(),
+  snoozeCount: z.number().int().min(0).max(100).default(0),
+  skipReason: z.string().trim().max(500).nullish(),
+});
+
 export const syncMutationSchema = z.object({
   /** Client-generated, so a retried request is applied at most once. */
   mutationId: idSchema,

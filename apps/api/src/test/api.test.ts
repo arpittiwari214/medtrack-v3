@@ -650,6 +650,79 @@ describe('offline sync', () => {
     expect(await DoseEvent.findById(doseId).lean()).toBeNull();
   });
 
+  it('validates an offline-created medicine exactly as REST does', async () => {
+    const account = await signup();
+    const medicineId = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c';
+
+    const response = await authed(account)(request(app).post('/api/sync')).send({
+      mutations: [
+        {
+          mutationId: '66666666-6666-4666-8666-666666666666',
+          entity: 'medicine',
+          operation: 'create',
+          entityId: medicineId,
+          clientUpdatedAt: new Date().toISOString(),
+          // A colour outside the list, which the REST route rejects.
+          payload: {
+            name: 'Telma',
+            pillColor: 'mauve',
+            schedule: { kind: 'daily', times: ['09:00'], startDate: TODAY_IST },
+          },
+        },
+      ],
+    });
+
+    // Previously written straight to the database.
+    expect(response.body.results[0].outcome).toBe('rejected');
+  });
+
+  it('will not let sync set fields the server owns', async () => {
+    const account = await signup();
+    const medicine = await createMedicine(account);
+
+    await authed(account)(request(app).post('/api/sync')).send({
+      mutations: [
+        {
+          mutationId: '77777777-7777-4777-8777-777777777777',
+          entity: 'medicine',
+          operation: 'update',
+          entityId: medicine['id'],
+          clientUpdatedAt: new Date(Date.now() + 60_000).toISOString(),
+          payload: { name: 'Renamed', archivedAt: new Date().toISOString(), userId: 'someone-else' },
+        },
+      ],
+    });
+
+    const { Medicine } = await import('../models/Medicine.js');
+    const stored = await Medicine.findById(medicine['id']).lean();
+    // The legitimate field applies; the server-owned ones are ignored.
+    expect(stored!.name).toBe('Renamed');
+    expect(stored!.archivedAt).toBeNull();
+    expect(stored!.userId).toBe(account.userId);
+  });
+
+  it('rejects a dose status the state machine does not know', async () => {
+    const account = await signup();
+    const medicine = await createMedicine(account);
+    const dose = await DoseEvent.findOne({ medicineId: medicine['id'] }).lean();
+
+    const response = await authed(account)(request(app).post('/api/sync')).send({
+      mutations: [
+        {
+          mutationId: '88888888-8888-4888-8888-888888888888',
+          entity: 'dose',
+          operation: 'update',
+          entityId: String(dose!._id),
+          clientUpdatedAt: new Date().toISOString(),
+          payload: { status: 'banana' },
+        },
+      ],
+    });
+
+    expect(response.body.results[0].outcome).toBe('rejected');
+    expect((await DoseEvent.findById(dose!._id).lean())!.status).toBe('scheduled');
+  });
+
   it('generates doses for a medicine created offline', async () => {
     const account = await signup();
     const medicineId = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';

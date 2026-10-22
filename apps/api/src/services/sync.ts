@@ -16,13 +16,25 @@
  * locally and does not flicker when the authoritative answer arrives.
  */
 
-import { addDays, mergeDoseConflict, todayIn, type SyncMutationInput } from '@medtrack/shared';
+import {
+  addDays,
+  createAppointmentSchema,
+  createMedicineSchema,
+  idSchema,
+  mergeDoseConflict,
+  syncDosePayloadSchema,
+  todayIn,
+  updateAppointmentSchema,
+  updateMedicineSchema,
+  type SyncMutationInput,
+} from '@medtrack/shared';
 import { MongoServerError } from 'mongodb';
 import { childLogger } from '../config/logger.js';
 import { Appointment } from '../models/Appointment.js';
 import { DoseEvent } from '../models/DoseEvent.js';
 import { Medicine } from '../models/Medicine.js';
 import { SyncMutation } from '../models/SyncMutation.js';
+import { User } from '../models/User.js';
 import {
   MATERIALISE_AHEAD_DAYS,
   generateDosesForMedicine,
@@ -32,6 +44,12 @@ import {
   toDomainMedicine,
   type MedicineSource,
 } from './doses.js';
+import {
+  applyAppointmentUpdate,
+  applyMedicineUpdate,
+  appointmentFields,
+  medicineFields,
+} from './writes.js';
 
 const log = childLogger('sync');
 
@@ -194,7 +212,7 @@ async function applyDoseMutation(
   }
 
   const server = toDomainDose(doc.toObject());
-  const payload = mutation.payload as Partial<typeof server>;
+  const payload = syncDosePayloadSchema.parse(mutation.payload);
 
   const client = {
     ...server,
@@ -230,12 +248,16 @@ async function applyDoseMutation(
 
 /* ─────────────────────────── Medicine mutations ─────────────────────────── */
 
+/**
+ * Payloads are validated exactly as the REST routes validate them and written
+ * through the same functions (see writes.ts). Until this, sync wrote the raw
+ * payload into the database, so anything queued offline skipped validation
+ * and could set server-owned fields.
+ */
 async function applyMedicineMutation(
   userId: string,
   mutation: SyncMutationInput,
 ): Promise<MutationOutcome> {
-  const payload = mutation.payload as Record<string, unknown>;
-
   if (mutation.operation === 'delete') {
     const archived = await Medicine.findOneAndUpdate(
       { _id: mutation.entityId, userId, archivedAt: null },
@@ -252,12 +274,18 @@ async function applyMedicineMutation(
 
   if (!existing) {
     if (mutation.operation === 'update') return 'no_op';
-    // A create queued offline. `userId` is taken from the session, never the
-    // payload, so a client cannot write into someone else's record.
-    const created = await Medicine.create({ ...payload, _id: mutation.entityId, userId });
+    // A create queued offline. `userId` comes from the session and the
+    // timezone from the account, never the payload.
+    const id = idSchema.parse(mutation.entityId);
+    const input = createMedicineSchema.parse(mutation.payload);
+    const created = await Medicine.create({
+      _id: id,
+      userId,
+      ...medicineFields(input, await timezoneOf(userId)),
+    });
 
-    // The REST create materialises doses; the sync create did not, so every
-    // dose of a medicine added offline had nothing to attach to on arrival.
+    // The REST create materialises doses; the sync create used not to, so
+    // every dose of a medicine added offline had nothing to attach to.
     const domain = toDomainMedicine(created.toObject() as unknown as MedicineSource);
     const today = todayIn(domain.timezone);
     await generateDosesForMedicine(domain, today, addDays(today, MATERIALISE_AHEAD_DAYS));
@@ -270,17 +298,14 @@ async function applyMedicineMutation(
     return 'conflict_resolved';
   }
 
-  const { _id, userId: _ignored, rev: _rev, ...safe } = payload;
-  existing.set({ ...safe, rev: existing.rev + 1 });
+  const { scheduleChanged } = applyMedicineUpdate(existing, updateMedicineSchema.parse(mutation.payload));
   await existing.save();
 
   // A schedule edited offline must move future doses, exactly as the REST
   // update does — otherwise reminders follow the new times while the server
   // keeps generating the old ones.
-  if ('schedule' in safe || 'timezone' in safe || 'archivedAt' in safe) {
-    await regenerateFutureDoses(
-      toDomainMedicine(existing.toObject() as unknown as MedicineSource),
-    );
+  if (scheduleChanged) {
+    await regenerateFutureDoses(toDomainMedicine(existing.toObject() as unknown as MedicineSource));
   }
   return 'applied';
 }
@@ -291,18 +316,19 @@ async function applyAppointmentMutation(
   userId: string,
   mutation: SyncMutationInput,
 ): Promise<MutationOutcome> {
-  const payload = mutation.payload as Record<string, unknown>;
-
   if (mutation.operation === 'delete') {
     const result = await Appointment.deleteOne({ _id: mutation.entityId, userId });
     return result.deletedCount > 0 ? 'applied' : 'no_op';
   }
 
   const existing = await Appointment.findOne({ _id: mutation.entityId, userId });
+  const timezone = await timezoneOf(userId);
 
   if (!existing) {
     if (mutation.operation === 'update') return 'no_op';
-    await Appointment.create({ ...payload, _id: mutation.entityId, userId });
+    const id = idSchema.parse(mutation.entityId);
+    const input = createAppointmentSchema.parse(mutation.payload);
+    await Appointment.create({ _id: id, userId, ...appointmentFields(input, timezone) });
     return 'applied';
   }
 
@@ -310,10 +336,15 @@ async function applyAppointmentMutation(
     return 'conflict_resolved';
   }
 
-  const { _id, userId: _ignored, rev: _rev, ...safe } = payload;
-  existing.set({ ...safe, rev: existing.rev + 1 });
+  applyAppointmentUpdate(existing, updateAppointmentSchema.parse(mutation.payload), timezone);
   await existing.save();
   return 'applied';
+}
+
+async function timezoneOf(userId: string): Promise<string> {
+  const user = await User.findById(userId).select({ timezone: 1 }).lean();
+  if (!user) throw new Error('Account not found.');
+  return user.timezone;
 }
 
 /* ────────────────────────────── Pull phase ──────────────────────────────── */
