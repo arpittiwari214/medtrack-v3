@@ -10,6 +10,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Express } from 'express';
 import { createApp } from '../app.js';
 import { DoseEvent } from '../models/DoseEvent.js';
+import { AuditEvent } from '../models/AuditEvent.js';
+import { Medicine } from '../models/Medicine.js';
+import { User } from '../models/User.js';
+import { purgeDeletedAccounts } from '../routes/account.js';
 import { detectMissedDoses } from '../services/scheduler.js';
 
 let app: Express;
@@ -793,6 +797,72 @@ describe('account data rights', () => {
     expect(response.body.medicines).toHaveLength(1);
     expect(response.body.doseHistory.length).toBeGreaterThan(0);
     expect(JSON.stringify(response.body)).not.toContain('passwordHash');
+  });
+
+  it('records what each consent covered, and lets optional ones be withdrawn', async () => {
+    const account = await signup();
+
+    const granted = await authed(account)(request(app).post('/api/account/consents')).send({
+      kind: 'research_use',
+      granted: true,
+      language: 'hi',
+    });
+    expect(granted.status).toBe(200);
+    const research = granted.body.consents.find((c: { kind: string }) => c.kind === 'research_use');
+    expect(research.purpose).toMatch(/name, email and phone are removed/);
+    expect(research.dataItems).toContain('Dose history');
+    expect(research.language).toBe('hi');
+    expect(research.documentVersion).toBe('1.1.0');
+
+    const withdrawn = await authed(account)(request(app).post('/api/account/consents')).send({
+      kind: 'research_use',
+      granted: false,
+    });
+    expect(
+      withdrawn.body.consents.find((c: { kind: string }) => c.kind === 'research_use').withdrawnAt,
+    ).toBeTruthy();
+
+    const actions = (await AuditEvent.find({ userId: account.userId }).lean()).map((e) => e.action);
+    expect(actions).toEqual(['account_created', 'consent_granted', 'consent_withdrawn']);
+  });
+
+  it('lets an account in its grace period sign in and cancel, then erases everything but the privacy log', async () => {
+    const account = await signup();
+    await createMedicine(account);
+    const credentials = { email: account.email, password: 'a-sufficiently-long-password' };
+
+    const requested = await authed(account)(request(app).post('/api/account/delete')).send({
+      ...credentials,
+      confirmation: 'DELETE MY ACCOUNT',
+    });
+    expect(requested.status).toBe(200);
+
+    // The deletion response promises "sign in before then to cancel".
+    const login = await request(app).post('/api/auth/login').send(credentials);
+    expect(login.status).toBe(200);
+    const cancelled = await request(app)
+      .post('/api/account/delete/cancel')
+      .set('Authorization', `Bearer ${login.body.accessToken}`);
+    expect(cancelled.status).toBe(200);
+
+    await request(app)
+      .post('/api/account/delete')
+      .set('Authorization', `Bearer ${login.body.accessToken}`)
+      .send({ ...credentials, confirmation: 'DELETE MY ACCOUNT' });
+
+    // Not yet: the grace period has not passed.
+    await purgeDeletedAccounts(new Date());
+    expect(await User.countDocuments({ _id: account.userId })).toBe(1);
+
+    await purgeDeletedAccounts(new Date(Date.now() + 365 * 86_400_000));
+    expect(await User.countDocuments({ _id: account.userId })).toBe(0);
+    expect(await Medicine.countDocuments({ userId: account.userId })).toBe(0);
+    expect(await DoseEvent.countDocuments({ userId: account.userId })).toBe(0);
+
+    const log = await AuditEvent.find({ userId: account.userId }).lean();
+    expect(log.map((e) => e.action)).toContain('account_purged');
+    // Nothing that identifies the person survives in it.
+    expect(JSON.stringify(log)).not.toContain(account.email);
   });
 
   it('requires the password and an exact confirmation to delete', async () => {

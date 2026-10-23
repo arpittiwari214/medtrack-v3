@@ -49,6 +49,8 @@ export interface User {
   setupFor?: 'self' | 'family' | null;
   /** When they declared they are 18 or over. */
   adultDeclaredAt?: InstantISO | null;
+  /** Set while an erasure request is in its grace period. */
+  deletionRequestedAt?: InstantISO | null;
   emailVerifiedAt?: InstantISO | null;
   /** Consent records required under the DPDP Act; see `docs/legal`. */
   consents: ConsentRecord[];
@@ -61,12 +63,18 @@ export type ConsentKind =
   | 'privacy_policy'
   | 'health_data_processing'
   | 'caregiver_sharing'
-  | 'marketing_email';
+  | 'marketing_email'
+  | 'research_use';
 
 export interface ConsentRecord {
   kind: ConsentKind;
   /** Version of the document consented to, so re-consent can be demanded on change. */
   documentVersion: string;
+  /** The itemised notice it was given against (see CONSENT_SCOPE). Absent on early records. */
+  purpose?: string;
+  dataItems?: string[];
+  /** Language the notice was shown in. */
+  language?: string;
   grantedAt: InstantISO;
   withdrawnAt?: InstantISO | null;
 }

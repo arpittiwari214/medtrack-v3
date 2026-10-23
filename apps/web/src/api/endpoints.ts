@@ -10,6 +10,8 @@ import type {
   Alert,
   Appointment,
   CarePermissions,
+  ConsentKind,
+  ConsentRecord,
   DailyAdherencePoint,
   DoseEvent,
   Insight,
@@ -167,8 +169,9 @@ export const alertsApi = {
 };
 
 export const accountApi = {
-  consents: () => api.get<{ consents: unknown[]; currentVersions: Record<string, string> }>('/account/consents'),
-  updateConsent: (body: unknown) => api.post<{ consents: unknown[] }>('/account/consents', body),
+  consents: () => api.get<{ consents: ConsentRecord[]; currentVersions: Record<string, string> }>('/account/consents'),
+  updateConsent: (body: { kind: ConsentKind; granted: boolean }) =>
+    api.post<{ consents: ConsentRecord[] }>('/account/consents', body),
   requestDeletion: (body: unknown) =>
     api.post<{ message: string; purgeAt: string; graceDays: number }>('/account/delete', body),
   cancelDeletion: () => api.post<{ message: string }>('/account/delete/cancel'),

@@ -68,6 +68,9 @@ const adultDateOfBirthSchema = localDateSchema.refine((dob) => isAdult(dob), {
   message: 'MedTrack accounts are for people aged 18 or over.',
 });
 
+/** Language a notice was shown in, recorded with the consent given against it. */
+export const noticeLanguageSchema = z.enum(['en', 'hi']).default('en');
+
 /** Who the medicines are for. Asked once at signup; optional. */
 export const setupForSchema = z.enum(['self', 'family']);
 
@@ -91,6 +94,7 @@ export const signupSchema = z.object({
   }),
   /** Opt-in, defaulting to off. Never pre-ticked in the UI. */
   marketingEmail: z.boolean().default(false),
+  language: noticeLanguageSchema,
 });
 
 export const loginSchema = z.object({
@@ -399,9 +403,13 @@ export const updateConsentSchema = z.object({
     'health_data_processing',
     'caregiver_sharing',
     'marketing_email',
+    'research_use',
   ]),
   granted: z.boolean(),
-  documentVersion: z.string().min(1).max(20),
+  /** Ignored: the server records the version currently in force. */
+  documentVersion: z.string().min(1).max(20).optional(),
+  /** Language the notice was shown in. */
+  language: noticeLanguageSchema,
 });
 
 /* ──────────────────────────── Inferred types ────────────────────────────── */

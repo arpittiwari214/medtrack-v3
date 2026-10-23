@@ -40,6 +40,7 @@ import { User } from '../models/User.js';
 import { Appointment } from '../models/Appointment.js';
 import { sendCaregiverInviteEmail } from '../services/email.js';
 import { toDomainDose } from '../services/doses.js';
+import { audit } from '../services/privacy.js';
 
 const log = childLogger('care');
 const router = Router();
@@ -113,6 +114,7 @@ router.post('/caregivers', emailLimiter, validate(inviteCaregiverSchema), async 
       acceptUrl: `${env.WEB_APP_URL}/care/accept?token=${token}`,
     });
 
+    await audit(userId, 'caregiver_invited', { careLinkId: String(link._id) });
     log.info({ patientId: userId, careLinkId: link._id }, 'Caregiver invited');
     res.status(201).json({ caregiver: link.toJSON() });
   } catch (error) {
@@ -160,6 +162,7 @@ router.delete('/caregivers/:id', async (req, res, next) => {
     link.inviteTokenHash = null;
     await link.save();
 
+    await audit(userId, 'caregiver_revoked', { careLinkId: String(link._id) });
     log.info({ patientId: userId, careLinkId: link._id }, 'Caregiver access revoked');
     res.json({ message: 'Access withdrawn. They can no longer see your information.' });
   } catch (error) {
@@ -227,6 +230,11 @@ router.post('/invitations/respond', validate(respondToInviteSchema), async (req,
 
     if (accept) {
       await User.updateOne({ _id: userId }, { $addToSet: { roles: 'caregiver' } });
+      // Logged against the patient: it is their data that someone can now see.
+      await audit(link.patientId, 'caregiver_access_granted', {
+        careLinkId: String(link._id),
+        caregiverId: userId,
+      });
     }
 
     res.json({

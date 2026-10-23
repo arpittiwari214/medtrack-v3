@@ -7,6 +7,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { CONSENT_SCOPE, type ConsentKind } from '@medtrack/shared';
 import { ApiError, tokens } from '../api/client.js';
 import { accountApi, authApi } from '../api/endpoints.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -22,6 +23,23 @@ export default function Settings() {
   const [busy, setBusy] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const OPTIONAL: ConsentKind[] = ['research_use', 'marketing_email'];
+  const isGranted = (kind: ConsentKind) =>
+    Boolean(user?.consents?.some((consent) => consent.kind === kind && !consent.withdrawnAt));
+
+  /** Withdrawing must be as easy as agreeing: one click either way. */
+  async function toggleConsent(kind: ConsentKind, granted: boolean) {
+    setError('');
+    setStatus('');
+    try {
+      await accountApi.updateConsent({ kind, granted });
+      await refresh();
+      setStatus(granted ? 'Turned on.' : 'Turned off.');
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Could not save that choice.');
+    }
+  }
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault();
@@ -151,6 +169,29 @@ export default function Settings() {
               <span className="flex-1">Sign out</span>
               <ChevronRight size={16} />
             </button>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <span className="micro">Privacy choices</span>
+          </div>
+          <div className="panel-body stack">
+            {OPTIONAL.map((kind) => (
+              <label key={kind} className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={isGranted(kind)}
+                  onChange={(event) => void toggleConsent(kind, event.target.checked)}
+                />
+                <span className="t-sm">
+                  {CONSENT_SCOPE[kind].purpose}
+                  <span className="field-hint" style={{ display: 'block' }}>
+                    Uses: {CONSENT_SCOPE[kind].dataItems.join(', ')}. Optional — off unless you turn it on.
+                  </span>
+                </span>
+              </label>
+            ))}
           </div>
         </section>
 

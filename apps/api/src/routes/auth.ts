@@ -16,7 +16,6 @@
 
 import { Router } from 'express';
 import {
-  LEGAL_DOCUMENT_VERSIONS,
   changePasswordSchema,
   loginSchema,
   refreshSchema,
@@ -45,6 +44,7 @@ import {
   rotateTokenPair,
 } from '../services/tokens.js';
 import { materialiseForUser } from '../services/scheduler.js';
+import { audit, consentRecord } from '../services/privacy.js';
 
 const log = childLogger('auth');
 const router = Router();
@@ -79,33 +79,12 @@ router.post('/signup', signupLimiter, validate(signupSchema), async (req, res, n
       throw AppError.conflict('That email cannot be used to create an account. Try signing in.');
     }
 
-    const consents = [
-      {
-        kind: 'terms_of_service' as const,
-        documentVersion: LEGAL_DOCUMENT_VERSIONS.terms_of_service,
-        grantedAt: now,
-      },
-      {
-        kind: 'privacy_policy' as const,
-        documentVersion: LEGAL_DOCUMENT_VERSIONS.privacy_policy,
-        grantedAt: now,
-      },
-      // Storing medication data *is* processing health data, so it is consented
-      // to separately and explicitly rather than folded into the privacy policy.
-      {
-        kind: 'health_data_processing' as const,
-        documentVersion: LEGAL_DOCUMENT_VERSIONS.privacy_policy,
-        grantedAt: now,
-      },
-    ];
-
-    if (input.marketingEmail) {
-      consents.push({
-        kind: 'marketing_email' as never,
-        documentVersion: LEGAL_DOCUMENT_VERSIONS.privacy_policy,
-        grantedAt: now,
-      });
-    }
+    // Storing medication data *is* processing health data, so it is consented
+    // to separately and explicitly rather than folded into the privacy policy.
+    const consents = (
+      ['terms_of_service', 'privacy_policy', 'health_data_processing'] as const
+    ).map((kind) => consentRecord(kind, input.language, now));
+    if (input.marketingEmail) consents.push(consentRecord('marketing_email', input.language, now));
 
     const user = await User.create({
       email: input.email,
@@ -124,6 +103,9 @@ router.post('/signup', signupLimiter, validate(signupSchema), async (req, res, n
       sessionContext(req),
     );
 
+    await audit(String(user._id), 'account_created', {
+      consents: consents.map((consent) => consent.kind).join(','),
+    });
     log.info({ userId: user._id }, 'Account created');
     res.status(201).json({ user: user.toJSON(), ...tokens });
   } catch (error) {
@@ -155,9 +137,8 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res, next)
       );
     }
 
-    if (user.deletionRequestedAt) {
-      throw AppError.forbidden('This account is scheduled for deletion.');
-    }
+    // An account in its deletion grace period can still sign in: that is how
+    // its owner cancels, and the web app puts the "Keep my account" banner first.
 
     if (user.failedLoginAttempts > 0) {
       user.failedLoginAttempts = 0;
@@ -169,6 +150,8 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res, next)
       { sub: String(user._id), email: user.email, roles: user.roles as ('patient' | 'caregiver')[] },
       sessionContext(req),
     );
+
+    await audit(String(user._id), 'signed_in');
 
     // Top up the agenda on sign-in, so a user returning after a break sees a
     // full schedule without waiting for the hourly sweep.

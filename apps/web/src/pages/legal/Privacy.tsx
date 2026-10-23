@@ -21,8 +21,8 @@ export default function Privacy() {
   return (
     <LegalLayout
       title="Privacy Policy"
-      version="1.0.0"
-      effectiveDate="25 August 2026"
+      version="1.1.0"
+      effectiveDate="23 October 2026"
       summary="We collect what we need to remind you about your medicines, and nothing else. We do not sell your data or use it for advertising. Your medication information is only shared with caregivers you personally invite, with permissions you choose, and you can withdraw that at any time. You can download or delete everything from Settings."
     >
       <div className="alert alert-warn" style={{ marginBottom: 'var(--s5)' }}>
@@ -112,6 +112,15 @@ export default function Privacy() {
               <td>To find and fix faults</td>
               <td>30 days</td>
             </tr>
+            <tr>
+              <td>
+                Privacy log: sign-ins, consents given or withdrawn, data downloads, deletion requests
+                and caregiver access — tied to a random account number, never your name, email or
+                health details
+              </td>
+              <td>To show that we honoured your choices and rights, and to detect misuse, as the DPDP Rules require</td>
+              <td>One year, including after your account is deleted</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -135,10 +144,31 @@ export default function Privacy() {
       <ul>
         <li>We do not sell or rent your personal data to anyone, for any purpose.</li>
         <li>We do not use your data for advertising, and we run no advertising trackers.</li>
-        <li>We do not build behavioural profiles or use your data to train models.</li>
+        <li>
+          We do not build behavioural profiles or use your data to train models. The one exception is
+          research you opt into (below), and even then we never sell it or share it with drug
+          companies, insurers or employers.
+        </li>
         <li>We do not share your data with employers, insurers, or pharmaceutical companies.</li>
         <li>We do not use third-party analytics that identify you individually.</li>
       </ul>
+
+      <h3>Research, only if you opt in</h3>
+      <p>
+        In <strong>Settings → Privacy choices</strong> you can let MedTrack use your medicines,
+        schedules, dose history, timezone and year of birth (if you gave it) — with your name, email
+        and phone removed first — for research into why doses are missed, so we can improve the app.
+        It is off unless you turn it on, and you can turn it off again at any time with one click;
+        data already used in a finished analysis cannot be pulled back out of it, but nothing new is
+        used once you turn it off.
+      </p>
+
+      <h3>What every consent records</h3>
+      <p>
+        Each consent you give is stored with the exact purpose, the list of data it covers, the version
+        of this policy and the language it was shown in, so there is never any doubt about what you
+        agreed to.
+      </p>
 
       <h2>5. Who else sees your data</h2>
       <p>
@@ -210,8 +240,8 @@ export default function Privacy() {
           period — during which you can cancel by signing in — everything is permanently erased.
         </li>
         <li>
-          <strong>Withdraw consent.</strong> Turn off optional email, or revoke any caregiver, at any
-          time. Withdrawing consent for the medication data the service is built on means deleting
+          <strong>Withdraw consent.</strong> Turn off research use or optional email in{' '}
+          <strong>Settings → Privacy choices</strong>, or revoke any caregiver, at any time. Withdrawing consent for the medication data the service is built on means deleting
           your account, because there is no meaningful service without it — we say that plainly
           rather than pretending otherwise.
         </li>
@@ -244,11 +274,11 @@ export default function Privacy() {
 
       <h2>8. Children</h2>
       <p>
-        MedTrack is not intended for people under 18 using it on their own. Under the DPDP Act,
-        processing a child’s data requires verifiable parental consent. If you are a parent or
-        guardian managing a child’s medication, you are responsible for that consent, and you must
-        not enable behavioural advertising or tracking features (we do not offer any). If we learn
-        that a child has created an account without parental consent, we will delete it.
+        MedTrack accounts are for adults. You confirm you are 18 or older when you sign up, and a
+        date of birth under 18 is refused. Under the DPDP Act, processing a child’s data needs
+        verifiable parental consent, which MedTrack does not collect — so it is not designed for
+        tracking a child’s medicines. If we learn that an account belongs to a child, we will
+        delete it.
       </p>
 
       <h2>9. Changes to this policy</h2>

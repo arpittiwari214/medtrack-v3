@@ -14,6 +14,8 @@
 
 import { Router } from 'express';
 import { LEGAL_DOCUMENT_VERSIONS, deleteAccountSchema, updateConsentSchema } from '@medtrack/shared';
+import { AuditEvent } from '../models/AuditEvent.js';
+import { audit, consentRecord } from '../services/privacy.js';
 import { childLogger } from '../config/logger.js';
 import { auth, requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/error.js';
@@ -50,7 +52,7 @@ router.get('/export', async (req, res, next) => {
   try {
     const { userId } = auth(req);
 
-    const [user, medicines, doses, appointments, careLinks, alerts, devices] = await Promise.all([
+    const [user, medicines, doses, appointments, careLinks, alerts, devices, privacyLog] = await Promise.all([
       User.findById(userId).lean(),
       Medicine.find({ userId }).lean(),
       DoseEvent.find({ userId }).sort({ scheduledAt: 1 }).lean(),
@@ -58,6 +60,7 @@ router.get('/export', async (req, res, next) => {
       CareLink.find({ $or: [{ patientId: userId }, { caregiverId: userId }] }).lean(),
       Alert.find({ patientId: userId }).lean(),
       Device.find({ userId }).select({ pushToken: 0 }).lean(),
+      AuditEvent.find({ userId }).sort({ at: 1 }).lean(),
     ]);
 
     if (!user) throw AppError.unauthenticated('Please sign in again.');
@@ -92,7 +95,9 @@ router.get('/export', async (req, res, next) => {
       caregivers: strip(careLinks as Record<string, unknown>[]),
       alerts: strip(alerts as Record<string, unknown>[]),
       devices: strip(devices as Record<string, unknown>[]),
+      privacyLog: strip(privacyLog as Record<string, unknown>[]),
     });
+    await audit(userId, 'data_exported');
   } catch (error) {
     next(error);
   }
@@ -140,23 +145,27 @@ router.post('/consents', validate(updateConsentSchema), async (req, res, next) =
       (consent) => consent.kind === input.kind && !consent.withdrawnAt,
     );
 
+    const record = consentRecord(input.kind, input.language);
+
     if (input.granted) {
-      if (existing && existing.documentVersion === input.documentVersion) {
+      if (existing && existing.documentVersion === record.documentVersion) {
         res.json({ consents: user.consents });
         return;
       }
       if (existing) existing.withdrawnAt = new Date();
-      user.consents.push({
-        kind: input.kind,
-        documentVersion: input.documentVersion,
-        grantedAt: new Date(),
-        withdrawnAt: null,
-      });
+      user.consents.push(record);
     } else if (existing) {
       existing.withdrawnAt = new Date();
+    } else {
+      res.json({ consents: user.consents });
+      return;
     }
 
     await user.save();
+    await audit(userId, input.granted ? 'consent_granted' : 'consent_withdrawn', {
+      kind: input.kind,
+      version: record.documentVersion,
+    });
     log.info({ userId, kind: input.kind, granted: input.granted }, 'Consent updated');
     res.json({ consents: user.consents });
   } catch (error) {
@@ -192,6 +201,7 @@ router.post('/delete', validate(deleteAccountSchema), async (req, res, next) => 
     await Device.deleteMany({ userId });
     await revokeAllForUser(userId, 'account_deleted');
 
+    await audit(userId, 'deletion_requested');
     log.info({ userId, purgeAt }, 'Account deletion requested');
     res.json({
       message: `Your account is scheduled for deletion on ${purgeAt.toISOString().slice(0, 10)}. Sign in before then to cancel.`,
@@ -216,6 +226,7 @@ router.post('/delete/cancel', async (req, res, next) => {
     user.deletionRequestedAt = null;
     await user.save();
 
+    await audit(userId, 'deletion_cancelled');
     log.info({ userId }, 'Account deletion cancelled');
     res.json({ message: 'Deletion cancelled. Your account is active again.' });
   } catch (error) {
@@ -229,7 +240,9 @@ router.post('/delete/cancel', async (req, res, next) => {
  * Permanently erase accounts whose grace period has elapsed.
  *
  * Called by the scheduler. Ordered so that if it fails partway, what remains is
- * an account with no health data rather than health data with no owner.
+ * an account with no health data rather than health data with no owner. The
+ * privacy log is deliberately left: it holds no personal data and must be kept
+ * for a year (see models/AuditEvent.ts).
  */
 export async function purgeDeletedAccounts(now: Date = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - DELETION_GRACE_DAYS * 24 * 60 * 60 * 1000);
@@ -252,6 +265,7 @@ export async function purgeDeletedAccounts(now: Date = new Date()): Promise<numb
       PasswordReset.deleteMany({ userId }),
     ]);
     await User.deleteOne({ _id: userId });
+    await audit(userId, 'account_purged');
     log.info({ userId }, 'Account purged');
   }
 
