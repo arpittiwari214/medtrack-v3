@@ -80,7 +80,7 @@ function Tabs() {
 function Root() {
   const c = useTheme();
   const { t } = useT();
-  const { user, loading, actOnDose, setAnnounceDoseId } = useApp();
+  const { user, wantsSignIn, loading, actOnDose, setAnnounceDoseId } = useApp();
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   /**
@@ -138,7 +138,7 @@ function Root() {
     );
   }
 
-  return user ? <Tabs /> : <SignInScreen />;
+  return user && !wantsSignIn ? <Tabs /> : <SignInScreen />;
 }
 
 export default function App() {

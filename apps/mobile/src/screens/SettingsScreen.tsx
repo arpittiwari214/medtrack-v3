@@ -24,7 +24,8 @@ const LANGUAGES: { value: string | null; label: string }[] = [
 
 export default function SettingsScreen() {
   const c = useTheme();
-  const { user, cache, signOut, refresh, syncing, prefs, updatePrefs } = useApp();
+  const { user, isLocal, setWantsSignIn, cache, signOut, refresh, syncing, prefs, updatePrefs } =
+    useApp();
   const { t } = useT();
 
   const [queued, setQueued] = useState(0);
@@ -39,9 +40,9 @@ export default function SettingsScreen() {
   }, [loadQueued, cache]);
 
   function confirmSignOut() {
-    Alert.alert(t('sign_out_title'), t('sign_out_body'), [
+    Alert.alert(t(isLocal ? 'remove_all' : 'sign_out_title'), t(isLocal ? 'remove_all_body' : 'sign_out_body'), [
       { text: t('cancel'), style: 'cancel' },
-      { text: t('sign_out'), style: 'destructive', onPress: () => void signOut() },
+      { text: t(isLocal ? 'remove_all' : 'sign_out'), style: 'destructive', onPress: () => void signOut() },
     ]);
   }
 
@@ -53,13 +54,25 @@ export default function SettingsScreen() {
       <ScreenHeader eyebrow={user?.email} title={t('settings_title')} />
 
       <View style={sharedStyles.stack}>
-        <Panel>
-          <PanelHead label={t('account')} />
-          <View>
-            <ListRow title={user?.name ?? '—'} subtitle={t('name')} />
-            <ListRow title={user?.timezone ?? '—'} subtitle={t('timezone')} last />
-          </View>
-        </Panel>
+        {isLocal ? (
+          <Panel>
+            <PanelHead label={t('local_account')} />
+            <PanelBody>
+              <Text style={[type.sm, { color: c.text2, lineHeight: 20 }]}>{t('local_account_body')}</Text>
+              <View style={{ marginTop: spacing.lg }}>
+                <ActionSecondary label={t('back_up')} onPress={() => setWantsSignIn(true)} />
+              </View>
+            </PanelBody>
+          </Panel>
+        ) : (
+          <Panel>
+            <PanelHead label={t('account')} />
+            <View>
+              <ListRow title={user?.name ?? '—'} subtitle={t('name')} />
+              <ListRow title={user?.timezone ?? '—'} subtitle={t('timezone')} last />
+            </View>
+          </Panel>
+        )}
 
         <Panel>
           <PanelHead label={t('language')} />
@@ -114,31 +127,33 @@ export default function SettingsScreen() {
           </PanelBody>
         </Panel>
 
-        <Panel>
-          <PanelHead label={t('sync')} />
-          <PanelBody>
-            <View style={sharedStyles.rowBetween}>
-              <Text style={[type.sm, { color: c.text2 }]}>{t('last_synced')}</Text>
-              <Text style={[type.xs, { color: c.text }]}>
-                {cache.syncedAt ? new Date(cache.syncedAt).toLocaleString() : t('never')}
-              </Text>
-            </View>
-            <View style={[sharedStyles.rowBetween, { marginTop: spacing.md }]}>
-              <Text style={[type.sm, { color: c.text2 }]}>{t('waiting_to_send')}</Text>
-              <Text style={[type.xs, { color: c.text }]}>
-                {queued === 0 ? t('nothing') : t('changes_count', { n: queued })}
-              </Text>
-            </View>
-            {queued > 0 && (
-              <Text style={[type.xs, { color: c.text2, marginTop: spacing.md, lineHeight: 19 }]}>
-                {t('waiting_help')}
-              </Text>
-            )}
-            <View style={{ marginTop: spacing.lg }}>
-              <ActionSecondary label={t(syncing ? 'syncing' : 'sync_now')} onPress={refresh} />
-            </View>
-          </PanelBody>
-        </Panel>
+        {!isLocal && (
+          <Panel>
+            <PanelHead label={t('sync')} />
+            <PanelBody>
+              <View style={sharedStyles.rowBetween}>
+                <Text style={[type.sm, { color: c.text2 }]}>{t('last_synced')}</Text>
+                <Text style={[type.xs, { color: c.text }]}>
+                  {cache.syncedAt ? new Date(cache.syncedAt).toLocaleString() : t('never')}
+                </Text>
+              </View>
+              <View style={[sharedStyles.rowBetween, { marginTop: spacing.md }]}>
+                <Text style={[type.sm, { color: c.text2 }]}>{t('waiting_to_send')}</Text>
+                <Text style={[type.xs, { color: c.text }]}>
+                  {queued === 0 ? t('nothing') : t('changes_count', { n: queued })}
+                </Text>
+              </View>
+              {queued > 0 && (
+                <Text style={[type.xs, { color: c.text2, marginTop: spacing.md, lineHeight: 19 }]}>
+                  {t('waiting_help')}
+                </Text>
+              )}
+              <View style={{ marginTop: spacing.lg }}>
+                <ActionSecondary label={t(syncing ? 'syncing' : 'sync_now')} onPress={refresh} />
+              </View>
+            </PanelBody>
+          </Panel>
+        )}
 
         <Panel>
           <PanelHead label={t('about')} />
@@ -158,7 +173,7 @@ export default function SettingsScreen() {
           </View>
         </Panel>
 
-        <ActionSecondary label={t('sign_out')} onPress={confirmSignOut} />
+        <ActionSecondary label={t(isLocal ? 'remove_all' : 'sign_out')} onPress={confirmSignOut} />
       </View>
     </ScrollView>
   );

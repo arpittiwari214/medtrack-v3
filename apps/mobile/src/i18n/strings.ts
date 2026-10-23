@@ -23,9 +23,9 @@ export const en = {
   important: 'Important',
 
   // Greeting
-  greet_morning: 'Good morning, {name}',
-  greet_afternoon: 'Good afternoon, {name}',
-  greet_evening: 'Good evening, {name}',
+  greet_morning: 'Good morning',
+  greet_afternoon: 'Good afternoon',
+  greet_evening: 'Good evening',
 
   // Today
   offline_banner: 'Working offline. Your changes are saved and sync when you reconnect.',
@@ -197,6 +197,16 @@ export const en = {
 
   // Sign in
   welcome_back: 'Welcome back',
+  use_locally: 'Use without an account',
+  use_locally_note: 'Everything stays on this phone. You can sign in later to back it up.',
+  sign_in_title_local: 'Back up your medicines',
+  local_merge_note: 'The medicines and history on this phone will be added to the account you sign in to.',
+  back: 'Back',
+  local_account: 'On this phone only',
+  local_account_body: 'Nothing is backed up. If this phone is lost or reset, your medicines and history go with it.',
+  back_up: 'Sign in to back up',
+  remove_all: 'Remove everything from this phone',
+  remove_all_body: 'Your medicines, history and reminders on this phone will be deleted. This cannot be undone.',
   sign_in_sub: 'Sign in to see today’s doses.',
   email: 'Email address',
   password: 'Password',
@@ -283,9 +293,9 @@ export const hi: Record<StringKey, string> = {
   loading: 'MedTrack खुल रहा है…',
   important: 'ज़रूरी',
 
-  greet_morning: 'सुप्रभात, {name}',
-  greet_afternoon: 'नमस्ते, {name}',
-  greet_evening: 'शुभ संध्या, {name}',
+  greet_morning: 'सुप्रभात',
+  greet_afternoon: 'नमस्ते',
+  greet_evening: 'शुभ संध्या',
 
   offline_banner: 'आप ऑफ़लाइन हैं। आपके बदलाव सेव हैं और इंटरनेट आने पर अपने आप भेज दिए जाएँगे।',
   today_empty_title: 'आज कोई दवा नहीं',
@@ -449,6 +459,16 @@ export const hi: Record<StringKey, string> = {
   sign_out_body: 'इस फ़ोन पर रिमाइंडर बंद हो जाएँगे और ऑफ़लाइन डेटा हटा दिया जाएगा।',
 
   welcome_back: 'फिर से स्वागत है',
+  use_locally: 'बिना खाते के इस्तेमाल करें',
+  use_locally_note: 'सब कुछ इसी फ़ोन पर रहेगा। बाद में बैकअप के लिए साइन इन कर सकते हैं।',
+  sign_in_title_local: 'अपनी दवाइयों का बैकअप लें',
+  local_merge_note: 'इस फ़ोन की दवाइयाँ और रिकॉर्ड उस खाते में जुड़ जाएँगे जिसमें आप साइन इन करेंगे।',
+  back: 'वापस',
+  local_account: 'सिर्फ़ इस फ़ोन पर',
+  local_account_body: 'कुछ भी बैकअप नहीं है। फ़ोन खोने या रीसेट होने पर आपकी दवाइयाँ और रिकॉर्ड भी चले जाएँगे।',
+  back_up: 'बैकअप के लिए साइन इन करें',
+  remove_all: 'इस फ़ोन से सब कुछ हटाएँ',
+  remove_all_body: 'इस फ़ोन से आपकी दवाइयाँ, रिकॉर्ड और रिमाइंडर मिट जाएँगे। इसे वापस नहीं लाया जा सकता।',
   sign_in_sub: 'आज की दवाइयाँ देखने के लिए साइन इन करें।',
   email: 'ईमेल',
   password: 'पासवर्ड',

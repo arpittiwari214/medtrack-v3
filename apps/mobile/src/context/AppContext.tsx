@@ -69,6 +69,13 @@ import { SYNC_INTERVAL_MS } from '../config';
 
 interface AppContextValue {
   user: User | null;
+  /** No account: the data lives only on this phone and nothing syncs. */
+  isLocal: boolean;
+  /** Start using the app with no account. */
+  startLocally: () => Promise<void>;
+  /** A local user asked for the sign-in screen, to back their data up. */
+  wantsSignIn: boolean;
+  setWantsSignIn: (wants: boolean) => void;
   loading: boolean;
   cache: CachedData;
   syncing: boolean;
@@ -116,6 +123,28 @@ function deviceZone(): string {
   }
 }
 
+/**
+ * Stand-in for an account, so someone can start with nothing but the app.
+ * Asking for an email and password before the first reminder is where people
+ * give up; the account only earns its place once there is something to back
+ * up. Signing in later uploads everything queued on the phone.
+ */
+export const LOCAL_USER_ID = 'local';
+
+function localUser(): User {
+  const now = new Date().toISOString();
+  return {
+    id: LOCAL_USER_ID,
+    email: '',
+    name: '',
+    roles: ['patient'],
+    timezone: deviceZone(),
+    consents: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 /** Yesterday to tomorrow — enough for Today, a late "taken", and midnight. */
 async function withLocalDoses(timezone: string): Promise<CachedData> {
   const today = todayIn(timezone);
@@ -131,8 +160,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [health, setHealth] = useState<ReminderHealth | null>(null);
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [voices, setVoices] = useState<Record<string, string>>({});
-  const [prefs, setPrefs] = useState<Prefs>({ speakOnOpen: false, language: null });
+  const [prefs, setPrefs] = useState<Prefs>({ speakOnOpen: false, language: null, localProfile: false });
   const [announceDoseId, setAnnounceDoseId] = useState<string | null>(null);
+  const [wantsSignIn, setWantsSignIn] = useState(false);
+  const isLocal = user?.id === LOCAL_USER_ID;
+
+  const setLocalProfile = useCallback(async (localProfile: boolean) => {
+    const next = { ...(await readPrefs()), localProfile };
+    await writePrefs(next);
+    setPrefs(next);
+  }, []);
   const locale = resolveLocale(prefs.language);
 
   const appState = useRef<AppStateStatus>(AppState.currentState);
@@ -161,10 +198,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCache(await withLocalDoses(deviceZone()));
       setPhotos(await photoStore.read());
       setVoices(await voiceStore.read());
-      setPrefs(await readPrefs());
+      const storedPrefs = await readPrefs();
+      setPrefs(storedPrefs);
 
       const token = await getAccessToken();
       if (!token) {
+        if (storedPrefs.localProfile) setUser(localUser());
         setLoading(false);
         return;
       }
@@ -193,14 +232,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const runSync = useCallback(async () => {
     setSyncing(true);
     try {
-      const outcome = await sync();
+      // With no account there is nothing to sync with.
+      const outcome = (await getAccessToken()) ? await sync() : null;
       // Generate today's doses locally either way, so an offline phone still
       // rolls over at midnight and shows the new day.
       setCache(await withLocalDoses(deviceZone()));
 
-      if (outcome.offline) setLastSyncError(null);
-      else if (!outcome.ok) setLastSyncError('Could not sync with the server.');
-      else setLastSyncError(null);
+      setLastSyncError(
+        outcome && !outcome.ok && !outcome.offline ? 'Could not sync with the server.' : null,
+      );
     } finally {
       setSyncing(false);
     }
@@ -301,14 +341,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       await setTokens(result.accessToken, result.refreshToken);
       setUser(result.user);
+      setWantsSignIn(false);
+      // Anything recorded without an account is still in the outbox, so this
+      // first sync is what uploads it.
+      await setLocalProfile(false);
       await runSync();
     },
-    [runSync],
+    [runSync, setLocalProfile],
   );
+
+  const startLocally = useCallback(async () => {
+    await setLocalProfile(true);
+    setUser(localUser());
+  }, [setLocalProfile]);
 
   const signOut = useCallback(async () => {
     try {
-      await api.post('/auth/logout');
+      if (await getAccessToken()) await api.post('/auth/logout');
     } catch {
       // Signing out must always succeed locally — otherwise someone handing
       // their phone over cannot get out of the account.
@@ -320,11 +369,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await clearAll();
     // Photos and voice labels are health data too; they leave with everything else.
     await deleteAllMedia();
+    await setLocalProfile(false);
     setUser(null);
     setCache(EMPTY_CACHE);
     setPhotos({});
     setVoices({});
-  }, []);
+  }, [setLocalProfile]);
 
   const addMedicine = useCallback(
     async (input: CreateMedicineInput, media: { photo?: string | null; voice?: string | null } = {}) => {
@@ -397,6 +447,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      isLocal,
+      startLocally,
+      wantsSignIn,
+      setWantsSignIn,
       loading,
       cache,
       syncing,
@@ -419,6 +473,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       user,
+      isLocal,
+      startLocally,
+      wantsSignIn,
       loading,
       cache,
       syncing,

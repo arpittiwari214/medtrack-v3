@@ -12,13 +12,13 @@ import {
 import { ApiError, OfflineError } from '../api/client';
 import { useApp } from '../context/AppContext';
 import { MIN_TOUCH, radius, spacing, type, useTheme } from '../theme';
-import { Banner } from '../components/ui';
-import { AlertTriangle, Pill } from '../components/icons';
+import { ActionSecondary, Banner } from '../components/ui';
+import { AlertTriangle, Info, Pill } from '../components/icons';
 import { useT } from '../i18n/useT';
 
 export default function SignInScreen() {
   const c = useTheme();
-  const { signIn } = useApp();
+  const { signIn, startLocally, isLocal, setWantsSignIn } = useApp();
   const { t } = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,11 +60,19 @@ export default function SignInScreen() {
             <Pill size={22} color={c.brand} />
             <Text style={[type.lg, { color: c.text }]}>MedTrack</Text>
           </View>
-          <Text style={[type.display, { color: c.text, marginTop: spacing.lg }]}>{t('welcome_back')}</Text>
+          <Text style={[type.display, { color: c.text, marginTop: spacing.lg }]}>
+            {t(isLocal ? 'sign_in_title_local' : 'welcome_back')}
+          </Text>
           <Text style={[type.sm, { color: c.text2, marginTop: spacing.sm }]}>
             {t('sign_in_sub')}
           </Text>
         </View>
+
+        {isLocal && (
+          <Banner tone="info" icon={<Info size={18} color={c.infoInk} />}>
+            {t('local_merge_note')}
+          </Banner>
+        )}
 
         {error !== '' && (
           <Banner tone="danger" icon={<AlertTriangle size={18} color={c.dangerInk} />}>
@@ -141,6 +149,17 @@ export default function SignInScreen() {
             <Text style={{ ...type.base, fontWeight: '700', color: c.onBrand }}>{t('sign_in')}</Text>
           )}
         </Pressable>
+
+        {isLocal ? (
+          <ActionSecondary label={t('back')} onPress={() => setWantsSignIn(false)} />
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            <ActionSecondary label={t('use_locally')} onPress={() => void startLocally()} />
+            <Text style={[type.xs, { color: c.text2, textAlign: 'center', lineHeight: 18 }]}>
+              {t('use_locally_note')}
+            </Text>
+          </View>
+        )}
 
         {/* Account creation deliberately lives on the web. Signup needs the
             consent flow and the legal documents, and reproducing those in a

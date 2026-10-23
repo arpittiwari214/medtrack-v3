@@ -43,6 +43,9 @@ export interface SyncOutcome {
   cache: CachedData | null;
 }
 
+/** The server's per-request limit on queued changes. */
+const BATCH = 500;
+
 /** Guards against two syncs overlapping — the second would re-send the outbox. */
 let inFlight: Promise<SyncOutcome> | null = null;
 
@@ -59,7 +62,7 @@ async function runSync(): Promise<SyncOutcome> {
   try {
     const response = await api.post<SyncResponse>('/sync', {
       ...(cursor ? { since: cursor } : {}),
-      mutations: outbox.slice(0, 500),
+      mutations: outbox.slice(0, BATCH),
       timezone: currentTimeZone(),
     });
 
@@ -74,6 +77,13 @@ async function runSync(): Promise<SyncOutcome> {
     // the network call, so an offline device never extended its reminders —
     // the app that works without signal stopped reminding without signal.
     // AppContext reschedules on every cache change, online or not.
+
+    // A long stretch offline, or the first upload after using the app with no
+    // account, can queue more than one batch.
+    if (outbox.length > BATCH) {
+      const rest = await runSync();
+      return { ...rest, pushed: rest.pushed + BATCH };
+    }
 
     const rejected = response.results
       .filter((result) => result.outcome === 'rejected')

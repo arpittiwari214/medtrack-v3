@@ -118,7 +118,7 @@ export default function TodayScreen() {
 
   const total = ordered.length;
   const done = taken.length + missed.length + skipped.length;
-  const firstName = user?.name?.split(' ')[0] ?? 'there';
+  const firstName = user?.name?.split(' ')[0] ?? '';
 
   return (
     <>
@@ -143,7 +143,8 @@ export default function TodayScreen() {
             {formatDate(locale, today, 'long')}
           </Text>
           <Text style={[type.title, { color: c.text, marginTop: 4 }]}>
-            {t(greetingKey(), { name: firstName })}
+            {t(greetingKey())}
+            {firstName ? `, ${firstName}` : ''}
           </Text>
         </View>
 

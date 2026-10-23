@@ -16,9 +16,11 @@ export interface Prefs {
   speakOnOpen: boolean;
   /** Interface language; null follows the phone's setting. */
   language: string | null;
+  /** Using the app without an account: everything stays on this phone. */
+  localProfile: boolean;
 }
 
-const DEFAULTS: Prefs = { speakOnOpen: false, language: null };
+const DEFAULTS: Prefs = { speakOnOpen: false, language: null, localProfile: false };
 
 export async function readPrefs(): Promise<Prefs> {
   try {

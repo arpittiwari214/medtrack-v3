@@ -24,7 +24,7 @@ test('fills placeholders', () => {
 });
 
 test('leaves an unknown placeholder visible rather than printing "undefined"', () => {
-  assert.equal(translate('en', 'greet_morning', {}), 'Good morning, {name}');
+  assert.equal(translate('en', 'with_provider', {}), 'With {provider}');
 });
 
 test('counts doses in both languages', () => {
