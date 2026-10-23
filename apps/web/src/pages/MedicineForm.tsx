@@ -15,36 +15,23 @@ import { ApiError } from '../api/client.js';
 import { medicinesApi } from '../api/endpoints.js';
 import { ErrorBanner, ScreenHeader, Spinner } from '../components/ui.js';
 import { ColorPicker, SlotPicker } from '../components/recognition.js';
+import { useT, type StringKey } from '../i18n/index.js';
 
-const FORMS: { value: MedicineFormType; label: string }[] = [
-  { value: 'tablet', label: 'Tablet' },
-  { value: 'capsule', label: 'Capsule' },
-  { value: 'liquid', label: 'Liquid' },
-  { value: 'injection', label: 'Injection' },
-  { value: 'inhaler', label: 'Inhaler' },
-  { value: 'drops', label: 'Drops' },
-  { value: 'patch', label: 'Patch' },
-  { value: 'cream', label: 'Cream' },
-  { value: 'other', label: 'Other' },
+const FORMS: MedicineFormType[] = [
+  'tablet', 'capsule', 'liquid', 'injection', 'inhaler', 'drops', 'patch', 'cream', 'other',
 ];
 
-const KINDS: { value: ScheduleKind; label: string }[] = [
-  { value: 'daily', label: 'Every day' },
-  { value: 'interval_days', label: 'Every few days' },
-  { value: 'days_of_week', label: 'Certain days of the week' },
-  { value: 'cyclic', label: 'A few days on, then off' },
-  { value: 'as_needed', label: 'Only when I need it' },
-];
+const KINDS: ScheduleKind[] = ['daily', 'interval_days', 'days_of_week', 'cyclic', 'as_needed'];
 
-const WEEKDAYS: { value: Weekday; label: string }[] = [
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
-  { value: 7, label: 'Sun' },
-];
+const WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 7];
+
+/** Short weekday name from the browser, so no table is needed: 1 Jan 2024 was a Monday. */
+function weekdayName(day: Weekday, locale: string): string {
+  return new Date(Date.UTC(2024, 0, day)).toLocaleDateString(locale === 'hi' ? 'hi-IN' : 'en-GB', {
+    weekday: 'short',
+    timeZone: 'UTC',
+  });
+}
 
 function browserZone(): string {
   try {
@@ -57,6 +44,7 @@ function browserZone(): string {
 export default function MedicineForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t, locale } = useT();
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(isEdit);
@@ -121,7 +109,7 @@ export default function MedicineForm() {
         }
       } catch (caught) {
         if (!cancelled) {
-          setError(caught instanceof ApiError ? caught.message : 'Could not load that medicine.');
+          setError(caught instanceof ApiError ? caught.message : t('med_load_failed'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -132,7 +120,7 @@ export default function MedicineForm() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   function updateTime(index: number, value: string) {
     setTimes((previous) => previous.map((time, position) => (position === index ? value : time)));
@@ -184,36 +172,36 @@ export default function MedicineForm() {
           Object.fromEntries(caught.issues.map((issue) => [issue.path, issue.message])),
         );
       } else {
-        setError('Could not save. Check your connection and try again.');
+        setError(t('save_failed_connection'));
       }
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading) return <Spinner label="Loading medicine" />;
+  if (loading) return <Spinner label={t('loading_medicine')} />;
 
   return (
     <form className="stack" onSubmit={handleSubmit} noValidate>
-      <ScreenHeader title={isEdit ? 'Edit medicine' : 'Add a medicine'} />
+      <ScreenHeader title={t(isEdit ? 'edit_medicine' : 'add_a_medicine')} />
 
       {error && <ErrorBanner message={error} />}
 
       {/* Recognition first. Most patients identify a medicine by its colour,
           not its name — see shared/recognition.ts for the evidence. */}
       <section className="panel panel-pad stack">
-        <h2 className="t-lg">How do you recognise it?</h2>
-        <ColorPicker label="Tablet colour" name="pill-color" value={pillColor} onChange={setPillColor} />
-        <ColorPicker label="Strip colour" name="strip-color" value={stripColor} onChange={setStripColor} />
+        <h2 className="t-lg">{t('how_recognise')}</h2>
+        <ColorPicker label={t('tablet_colour')} name="pill-color" value={pillColor} onChange={setPillColor} />
+        <ColorPicker label={t('strip_colour')} name="strip-color" value={stripColor} onChange={setStripColor} />
         <div className="field">
           <label className="label" htmlFor="purpose">
-            What is it for? (in your own words)
+            {t('purpose_label')}
           </label>
           <input
             id="purpose"
             className="input"
             maxLength={40}
-            placeholder="e.g. BP, sugar, thyroid"
+            placeholder={t('purpose_placeholder')}
             value={purpose}
             aria-invalid={Boolean(fieldErrors['purpose'])}
             onChange={(event) => setPurpose(event.target.value)}
@@ -222,20 +210,18 @@ export default function MedicineForm() {
         </div>
         <div className="field">
           <label className="label" htmlFor="person">
-            Who takes it? (leave empty if it is you)
+            {t('person_label')}
           </label>
           <input
             id="person"
             className="input"
             maxLength={30}
-            placeholder="e.g. Papa"
+            placeholder={t('person_placeholder')}
             value={person}
             aria-invalid={Boolean(fieldErrors['person'])}
             onChange={(event) => setPerson(event.target.value)}
           />
-          <span className="field-hint">
-            For an account that looks after more than one person. Reminders will say whose medicine it is.
-          </span>
+          <span className="field-hint">{t('person_hint')}</span>
           {fieldErrors['person'] && <span className="field-error">{fieldErrors['person']}</span>}
         </div>
       </section>
@@ -243,13 +229,13 @@ export default function MedicineForm() {
       <section className="panel panel-pad stack">
         <div className="field">
           <label className="label" htmlFor="name">
-            Medicine name
+            {t('medicine_name')}
           </label>
           <input
             id="name"
             className="input"
             required
-            placeholder="e.g. Metformin"
+            placeholder={t('name_example')}
             value={name}
             aria-invalid={Boolean(fieldErrors['name'])}
             onChange={(event) => setName(event.target.value)}
@@ -259,12 +245,12 @@ export default function MedicineForm() {
 
         <div className="field">
           <label className="label" htmlFor="strength">
-            Strength or dose (optional — it is printed on the strip)
+            {t('strength_label')}
           </label>
           <input
             id="strength"
             className="input"
-            placeholder="e.g. 500 mg, 2 puffs"
+            placeholder={t('strength_example')}
             value={strength}
             aria-invalid={Boolean(fieldErrors['strength'])}
             onChange={(event) => setStrength(event.target.value)}
@@ -274,7 +260,7 @@ export default function MedicineForm() {
 
         <div className="field">
           <label className="label" htmlFor="form">
-            Form
+            {t('form_label')}
           </label>
           <select
             id="form"
@@ -283,8 +269,8 @@ export default function MedicineForm() {
             onChange={(event) => setForm(event.target.value as MedicineFormType)}
           >
             {FORMS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={option} value={option}>
+                {t(`form_${option}` as StringKey)}
               </option>
             ))}
           </select>
@@ -292,12 +278,12 @@ export default function MedicineForm() {
 
         <div className="field">
           <label className="label" htmlFor="instructions">
-            Instructions (optional)
+            {t('instructions_label')}
           </label>
           <input
             id="instructions"
             className="input"
-            placeholder="e.g. Take with food"
+            placeholder={t('instructions_example')}
             value={instructions}
             onChange={(event) => setInstructions(event.target.value)}
           />
@@ -305,11 +291,11 @@ export default function MedicineForm() {
       </section>
 
       <section className="panel panel-pad stack">
-        <h2 className="t-lg">When do you take it?</h2>
+        <h2 className="t-lg">{t('when_take')}</h2>
 
         <div className="field">
           <label className="label" htmlFor="kind">
-            Pattern
+            {t('pattern')}
           </label>
           <select
             id="kind"
@@ -318,8 +304,8 @@ export default function MedicineForm() {
             onChange={(event) => setKind(event.target.value as ScheduleKind)}
           >
             {KINDS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={option} value={option}>
+                {t(`sched_${option}` as StringKey)}
               </option>
             ))}
           </select>
@@ -328,7 +314,7 @@ export default function MedicineForm() {
         {kind === 'interval_days' && (
           <div className="field">
             <label className="label" htmlFor="interval">
-              Every how many days?
+              {t('every_how_many')}
             </label>
             <input
               id="interval"
@@ -344,17 +330,17 @@ export default function MedicineForm() {
 
         {kind === 'days_of_week' && (
           <div className="field">
-            <span className="label">Which days?</span>
+            <span className="label">{t('which_days')}</span>
             <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--s2)' }}>
               {WEEKDAYS.map((day) => (
                 <button
-                  key={day.value}
+                  key={day}
                   type="button"
-                  className={`btn btn-sm ${weekdays.includes(day.value) ? 'btn-primary' : 'btn-secondary'}`}
-                  aria-pressed={weekdays.includes(day.value)}
-                  onClick={() => toggleWeekday(day.value)}
+                  className={`btn btn-sm ${weekdays.includes(day) ? 'btn-primary' : 'btn-secondary'}`}
+                  aria-pressed={weekdays.includes(day)}
+                  onClick={() => toggleWeekday(day)}
                 >
-                  {day.label}
+                  {weekdayName(day, locale)}
                 </button>
               ))}
             </div>
@@ -365,7 +351,7 @@ export default function MedicineForm() {
           <div className="split">
             <div className="field flex-1">
               <label className="label" htmlFor="on-days">
-                Days on
+                {t('days_on')}
               </label>
               <input
                 id="on-days"
@@ -378,7 +364,7 @@ export default function MedicineForm() {
             </div>
             <div className="field flex-1">
               <label className="label" htmlFor="off-days">
-                Days off
+                {t('days_off')}
               </label>
               <input
                 id="off-days"
@@ -396,7 +382,7 @@ export default function MedicineForm() {
 
         {kind !== 'as_needed' && (
           <div className="field">
-            <span className="label">Exact times</span>
+            <span className="label">{t('exact_times')}</span>
             {times.map((time, index) => (
               <div key={index} className="row" style={{ gap: 'var(--s2)' }}>
                 <input
@@ -404,17 +390,17 @@ export default function MedicineForm() {
                   type="time"
                   required
                   value={time}
-                  aria-label={`Dose time ${index + 1}`}
+                  aria-label={t('dose_time_n', { n: index + 1 })}
                   onChange={(event) => updateTime(index, event.target.value)}
                 />
                 {times.length > 1 && (
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
-                    aria-label={`Remove dose time ${index + 1}`}
+                    aria-label={t('remove_time_n', { n: index + 1 })}
                     onClick={() => setTimes((previous) => previous.filter((_, i) => i !== index))}
                   >
-                    Remove
+                    {t('remove')}
                   </button>
                 )}
               </div>
@@ -425,7 +411,7 @@ export default function MedicineForm() {
                 className="btn btn-secondary btn-sm"
                 onClick={() => setTimes((previous) => [...previous, '20:00'])}
               >
-                + Add another time
+                {t('add_time')}
               </button>
             )}
             {fieldErrors['schedule.times'] && (
@@ -437,7 +423,7 @@ export default function MedicineForm() {
         <div className="split">
           <div className="field flex-1">
             <label className="label" htmlFor="start">
-              Start date
+              {t('start_date')}
             </label>
             <input
               id="start"
@@ -450,7 +436,7 @@ export default function MedicineForm() {
           </div>
           <div className="field flex-1">
             <label className="label" htmlFor="end">
-              End date (optional)
+              {t('end_date')}
             </label>
             <input
               id="end"
@@ -471,9 +457,9 @@ export default function MedicineForm() {
             onChange={(event) => setIsCritical(event.target.checked)}
           />
           <span>
-            <strong>This medicine is critical</strong>
+            <strong>{t('critical_label')}</strong>
             <span className="field-hint" style={{ display: 'block' }}>
-              Your caregivers are alerted the first time a dose is missed, rather than after several.
+              {t('critical_help')}
             </span>
           </span>
         </label>
@@ -485,9 +471,9 @@ export default function MedicineForm() {
             onChange={(event) => setTrackStock(event.target.checked)}
           />
           <span>
-            <strong>Track how much I have left</strong>
+            <strong>{t('track_stock')}</strong>
             <span className="field-hint" style={{ display: 'block' }}>
-              Get warned before you run out, while there is still time to order more.
+              {t('track_stock_help')}
             </span>
           </span>
         </label>
@@ -496,7 +482,7 @@ export default function MedicineForm() {
           <div className="row" style={{ gap: 'var(--s3)', flexWrap: 'wrap' }}>
             <div className="field" style={{ flex: '1 1 100px' }}>
               <label className="label" htmlFor="remaining">
-                I have
+                {t('i_have')}
               </label>
               <input
                 id="remaining"
@@ -509,7 +495,7 @@ export default function MedicineForm() {
             </div>
             <div className="field" style={{ flex: '1 1 100px' }}>
               <label className="label" htmlFor="per-dose">
-                Per dose
+                {t('per_dose')}
               </label>
               <input
                 id="per-dose"
@@ -523,7 +509,7 @@ export default function MedicineForm() {
             </div>
             <div className="field" style={{ flex: '1 1 100px' }}>
               <label className="label" htmlFor="threshold">
-                Warn me at
+                {t('warn_at')}
               </label>
               <input
                 id="threshold"
@@ -540,14 +526,14 @@ export default function MedicineForm() {
 
       <div className="stack stack-sm">
         <button className="action-primary" type="submit" disabled={busy}>
-          {busy ? 'Saving…' : isEdit ? 'Save changes' : 'Add medicine'}
+          {t(busy ? 'saving' : isEdit ? 'save_changes' : 'add_medicine')}
         </button>
         <button
           type="button"
           className="btn btn-secondary btn-block"
           onClick={() => navigate(-1)}
         >
-          Cancel
+          {t('cancel')}
         </button>
       </div>
     </form>

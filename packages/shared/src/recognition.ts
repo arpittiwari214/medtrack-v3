@@ -80,6 +80,54 @@ export function localeFrom(tag: string | null | undefined): Locale {
   return tag?.toLowerCase().startsWith('hi') ? 'hi' : 'en';
 }
 
+/** The device's own language, read without a native module or a DOM. */
+export function deviceLocale(): Locale {
+  try {
+    return localeFrom(Intl.DateTimeFormat().resolvedOptions().locale);
+  } catch {
+    return 'en';
+  }
+}
+
+/** A saved choice wins; otherwise follow the device. */
+export function resolveLocale(preference: string | null | undefined): Locale {
+  return preference ? localeFrom(preference) : deviceLocale();
+}
+
+/** Fill "{name}" placeholders. An unknown one stays visible rather than printing "undefined". */
+export function fillTemplate(template: string, params?: Record<string, string | number>): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
+}
+
+/**
+ * A calendar date in the patient's language: "Thursday 22 October",
+ * "गुरुवार, 22 अक्तूबर". Western digits are forced (`nu-latn`) — they match
+ * what is printed on the strip.
+ */
+export function formatDateFor(
+  localDate: string,
+  locale: Locale,
+  style: 'short' | 'long' | 'full',
+): string {
+  const options: Intl.DateTimeFormatOptions =
+    style === 'long'
+      ? { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }
+      : style === 'full'
+        ? { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }
+        : { day: 'numeric', month: 'short', timeZone: 'UTC' };
+  try {
+    return new Date(`${localDate}T00:00:00Z`).toLocaleDateString(
+      locale === 'hi' ? 'hi-IN-u-nu-latn' : 'en-GB',
+      options,
+    );
+  } catch {
+    return localDate;
+  }
+}
+
 /**
  * Hindi colour words in their masculine form. Adjectives ending in -ā take -ī
  * before a feminine noun (पीला कैप्सूल, पीली गोली); the rest do not change.

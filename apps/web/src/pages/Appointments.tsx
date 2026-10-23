@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { formatTime12h, todayIn, type Appointment, type AppointmentKind } from '@medtrack/shared';
+import { formatTimeFor, todayIn, type Appointment, type AppointmentKind } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { appointmentsApi } from '../api/endpoints.js';
 import { EmptyState, ErrorBanner, Modal, ScreenHeader, Spinner } from '../components/ui.js';
 import { AlertTriangle, Calendar, Plus } from '../components/icons.js';
+import { useT, type StringKey } from '../i18n/index.js';
 
-const KINDS: { value: AppointmentKind; label: string }[] = [
-  { value: 'doctor', label: 'Doctor visit' },
-  { value: 'lab_test', label: 'Lab test' },
-  { value: 'procedure', label: 'Procedure' },
-  { value: 'vaccination', label: 'Vaccination' },
-  { value: 'other', label: 'Other' },
-];
+const KINDS: AppointmentKind[] = ['doctor', 'lab_test', 'procedure', 'vaccination', 'other'];
+
+const STATUS_LABEL: Record<string, StringKey> = {
+  completed: 'status_completed',
+  cancelled: 'status_cancelled',
+  missed: 'status_missed',
+};
 
 function browserZone(): string {
   try {
@@ -22,6 +23,7 @@ function browserZone(): string {
 }
 
 export default function Appointments() {
+  const { t, locale, date } = useT();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [scope, setScope] = useState<'upcoming' | 'past'>('upcoming');
   const [loading, setLoading] = useState(true);
@@ -35,11 +37,11 @@ export default function Appointments() {
       const { appointments: list } = await appointmentsApi.list(which);
       setAppointments(list);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not load your appointments.');
+      setError(caught instanceof ApiError ? caught.message : t('appts_load_failed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load(scope);
@@ -50,39 +52,39 @@ export default function Appointments() {
       await appointmentsApi.update(appointment.id, { status: 'completed' });
       await load(scope);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not update that appointment.');
+      setError(caught instanceof ApiError ? caught.message : t('appt_update_failed'));
     }
   }
 
   async function remove(appointment: Appointment) {
-    if (!window.confirm(`Delete "${appointment.title}"?`)) return;
+    if (!window.confirm(t('delete_named_confirm', { title: appointment.title }))) return;
     try {
       await appointmentsApi.remove(appointment.id);
       await load(scope);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not delete that appointment.');
+      setError(caught instanceof ApiError ? caught.message : t('appt_delete_failed'));
     }
   }
 
   return (
     <div>
       <ScreenHeader
-        eyebrow="Visits and lab tests"
-        title="Appointments"
+        eyebrow={t('visits_eyebrow')}
+        title={t('appointments_title')}
         action={
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setFormOpen(true)}>
             <Plus size={16} />
-            Add
+            {t('add')}
           </button>
         }
       />
 
-      <div className="segmented" role="group" aria-label="Which appointments">
+      <div className="segmented" role="group" aria-label={t('which_appointments')}>
         <button type="button" aria-pressed={scope === 'upcoming'} onClick={() => setScope('upcoming')}>
-          Upcoming
+          {t('upcoming')}
         </button>
         <button type="button" aria-pressed={scope === 'past'} onClick={() => setScope('past')}>
-          Past
+          {t('past')}
         </button>
       </div>
 
@@ -90,16 +92,16 @@ export default function Appointments() {
 
       <div className="mt-4">
         {loading ? (
-          <Spinner label="Loading appointments" />
+          <Spinner label={t('loading_appointments')} />
         ) : appointments.length === 0 ? (
           <EmptyState
             icon={<Calendar size={22} />}
-            title={scope === 'upcoming' ? 'Nothing coming up' : 'Nothing in the past'}
-            description="Add a doctor visit or lab test and MedTrack reminds you the day before and an hour ahead."
+            title={t(scope === 'upcoming' ? 'visits_empty_up' : 'visits_empty_past')}
+            description={t('visits_empty_body_web')}
             action={
               scope === 'upcoming' ? (
                 <button type="button" className="btn btn-primary" onClick={() => setFormOpen(true)}>
-                  Add an appointment
+                  {t('add_appointment_cta')}
                 </button>
               ) : undefined
             }
@@ -107,13 +109,14 @@ export default function Appointments() {
         ) : (
           <div className="stack">
             {appointments.map((appointment) => {
-              const kind = KINDS.find((option) => option.value === appointment.kind);
               return (
                 <article key={appointment.id} className="panel">
                   <div className="panel-head">
-                    <span className="micro">{kind?.label ?? 'Appointment'}</span>
+                    <span className="micro">
+                      {KINDS.includes(appointment.kind) ? t(`kind_${appointment.kind}`) : t('appointment')}
+                    </span>
                     <span className="t-xs muted numeric">
-                      {appointment.localDate} · {formatTime12h(appointment.localTime)}
+                      {date(appointment.localDate)} · {formatTimeFor(appointment.localTime, locale)}
                     </span>
                   </div>
 
@@ -124,20 +127,20 @@ export default function Appointments() {
                         <span
                           className={`badge ${appointment.status === 'completed' ? 'badge-ok' : 'badge-neutral'}`}
                         >
-                          {appointment.status}
+                          {STATUS_LABEL[appointment.status] ? t(STATUS_LABEL[appointment.status]!) : appointment.status}
                         </span>
                       )}
                     </div>
 
                     {appointment.provider && (
-                      <p className="subtle mt-2">With {appointment.provider}</p>
+                      <p className="subtle mt-2">{t('with_provider', { provider: appointment.provider })}</p>
                     )}
                     {appointment.location && <p className="subtle">{appointment.location}</p>}
 
                     {appointment.requiresFasting && (
                       <div className="alert alert-warn mt-3">
                         <AlertTriangle size={18} />
-                        <span>Fasting required — do not eat beforehand.</span>
+                        <span>{t('fasting_required')}</span>
                       </div>
                     )}
 
@@ -150,14 +153,14 @@ export default function Appointments() {
                           className="btn btn-secondary btn-sm"
                           onClick={() => markComplete(appointment)}
                         >
-                          Mark done
+                          {t('mark_done')}
                         </button>
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
                           onClick={() => remove(appointment)}
                         >
-                          Delete
+                          {t('delete')}
                         </button>
                       </div>
                     )}
@@ -184,6 +187,7 @@ export default function Appointments() {
 }
 
 function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { t } = useT();
   const [kind, setKind] = useState<AppointmentKind>('doctor');
   const [title, setTitle] = useState('');
   const [localDate, setLocalDate] = useState(() => todayIn(browserZone()));
@@ -214,20 +218,20 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
       });
       onDone();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not save that appointment.');
+      setError(caught instanceof ApiError ? caught.message : t('appt_save_failed'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title="Add an appointment" onClose={onClose}>
+    <Modal title={t('add_appointment_cta')} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
         {error && <ErrorBanner message={error} />}
 
         <div className="field">
           <label className="label" htmlFor="kind">
-            Type
+            {t('type_label')}
           </label>
           <select
             id="kind"
@@ -236,8 +240,8 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
             onChange={(event) => setKind(event.target.value as AppointmentKind)}
           >
             {KINDS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={option} value={option}>
+                {t(`kind_${option}`)}
               </option>
             ))}
           </select>
@@ -245,13 +249,13 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
 
         <div className="field">
           <label className="label" htmlFor="title">
-            What is it?
+            {t('what_is_it')}
           </label>
           <input
             id="title"
             className="input"
             required
-            placeholder="e.g. Blood sugar review"
+            placeholder={t('appt_title_example')}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
           />
@@ -260,7 +264,7 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
         <div className="split">
           <div className="field">
             <label className="label" htmlFor="date">
-              Date
+              {t('date_label')}
             </label>
             <input
               id="date"
@@ -273,7 +277,7 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
           </div>
           <div className="field">
             <label className="label" htmlFor="time">
-              Time
+              {t('time_label')}
             </label>
             <input
               id="time"
@@ -288,12 +292,12 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
 
         <div className="field">
           <label className="label" htmlFor="provider">
-            Who with? (optional)
+            {t('who_with')}
           </label>
           <input
             id="provider"
             className="input"
-            placeholder="e.g. Dr. Rao"
+            placeholder={t('provider_example')}
             value={provider}
             onChange={(event) => setProvider(event.target.value)}
           />
@@ -301,7 +305,7 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
 
         <div className="field">
           <label className="label" htmlFor="location">
-            Where? (optional)
+            {t('where_label')}
           </label>
           <input
             id="location"
@@ -313,7 +317,7 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
 
         <div className="field">
           <label className="label" htmlFor="notes">
-            Notes (optional)
+            {t('notes_label')}
           </label>
           <textarea
             id="notes"
@@ -329,11 +333,11 @@ function AppointmentModal({ onClose, onDone }: { onClose: () => void; onDone: ()
             checked={requiresFasting}
             onChange={(event) => setRequiresFasting(event.target.checked)}
           />
-          <span className="t-sm">Fasting required beforehand</span>
+          <span className="t-sm">{t('fasting_beforehand')}</span>
         </label>
 
         <button className="action-primary" type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Add appointment'}
+          {t(busy ? 'saving' : 'add_appointment')}
         </button>
       </form>
     </Modal>

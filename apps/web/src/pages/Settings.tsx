@@ -13,9 +13,17 @@ import { accountApi, authApi } from '../api/endpoints.js';
 import { useAuth } from '../context/AuthContext.js';
 import { ErrorBanner, Modal, ScreenHeader, SuccessBanner } from '../components/ui.js';
 import { AlertTriangle, ChevronRight, Users } from '../components/icons.js';
+import { interleave, useT, type StringKey } from '../i18n/index.js';
+
+const LANGUAGES: { value: string | null; label: string }[] = [
+  { value: null, label: '' },
+  { value: 'en', label: 'English' },
+  { value: 'hi', label: 'हिन्दी' },
+];
 
 export default function Settings() {
   const { user, signOut, refresh } = useAuth();
+  const { t, locale, preference, setPreference } = useT();
 
   const [name, setName] = useState(user?.name ?? '');
   const [status, setStatus] = useState('');
@@ -33,11 +41,11 @@ export default function Settings() {
     setError('');
     setStatus('');
     try {
-      await accountApi.updateConsent({ kind, granted });
+      await accountApi.updateConsent({ kind, granted, language: locale });
       await refresh();
-      setStatus(granted ? 'Turned on.' : 'Turned off.');
+      setStatus(t(granted ? 'turned_on' : 'turned_off'));
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not save that choice.');
+      setError(caught instanceof ApiError ? caught.message : t('choice_failed'));
     }
   }
 
@@ -49,9 +57,9 @@ export default function Settings() {
     try {
       await authApi.updateProfile({ name });
       await refresh();
-      setStatus('Saved.');
+      setStatus(t('saved'));
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not save your changes.');
+      setError(caught instanceof ApiError ? caught.message : t('save_failed'));
     } finally {
       setBusy(false);
     }
@@ -79,13 +87,13 @@ export default function Settings() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch {
-      setError('Could not prepare your export. Please try again.');
+      setError(t('export_failed'));
     }
   }
 
   return (
     <div>
-      <ScreenHeader eyebrow={user?.email} title="Settings" />
+      <ScreenHeader eyebrow={user?.email} title={t('settings_title')} />
 
       {error && <ErrorBanner message={error} />}
       {status && <SuccessBanner message={status} />}
@@ -93,12 +101,12 @@ export default function Settings() {
       <div className="stack">
         <form className="panel" onSubmit={saveProfile}>
           <div className="panel-head">
-            <span className="micro">Your details</span>
+            <span className="micro">{t('your_details')}</span>
           </div>
           <div className="panel-body stack">
             <div className="field">
               <label className="label" htmlFor="name">
-                Name
+                {t('name')}
               </label>
               <input
                 id="name"
@@ -109,33 +117,49 @@ export default function Settings() {
             </div>
 
             <div className="field">
-              <span className="label">Timezone</span>
+              <span className="label">{t('timezone')}</span>
               <p className="muted t-sm">{user?.timezone}</p>
-              <span className="field-hint">
-                Your dose times are read in this zone. It updates automatically when you sign in
-                from somewhere else.
-              </span>
+              <span className="field-hint">{t('timezone_hint')}</span>
             </div>
 
             <button className="btn btn-primary" type="submit" disabled={busy}>
-              {busy ? 'Saving…' : 'Save changes'}
+              {t(busy ? 'saving' : 'save_changes')}
             </button>
           </div>
         </form>
 
         <section className="panel">
           <div className="panel-head">
-            <span className="micro">Sharing</span>
+            <span className="micro">{t('language')}</span>
+          </div>
+          <div className="panel-body row row-wrap" style={{ gap: 'var(--s2)' }}>
+            {LANGUAGES.map((option) => (
+              <button
+                key={option.value ?? 'auto'}
+                type="button"
+                className="slot-toggle"
+                aria-pressed={preference === option.value}
+                onClick={() => setPreference(option.value)}
+              >
+                {option.value === null ? t('language_auto') : option.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <span className="micro">{t('sharing')}</span>
           </div>
           <div className="list" style={{ border: 'none', borderRadius: 0 }}>
             <Link className="list-row list-row-link" to="/app/caregivers">
               <Users size={18} />
-              <span className="flex-1">Manage caregivers</span>
+              <span className="flex-1">{t('manage_caregivers')}</span>
               <ChevronRight size={16} />
             </Link>
             <Link className="list-row list-row-link" to="/care">
               <Users size={18} />
-              <span className="flex-1">People I care for</span>
+              <span className="flex-1">{t('patients_title')}</span>
               <ChevronRight size={16} />
             </Link>
           </div>
@@ -143,7 +167,7 @@ export default function Settings() {
 
         <section className="panel">
           <div className="panel-head">
-            <span className="micro">Security</span>
+            <span className="micro">{t('security')}</span>
           </div>
           <div className="list" style={{ border: 'none', borderRadius: 0 }}>
             <button
@@ -151,7 +175,7 @@ export default function Settings() {
               className="list-row list-row-link"
               onClick={() => setPasswordOpen(true)}
             >
-              <span className="flex-1">Change password</span>
+              <span className="flex-1">{t('change_password')}</span>
               <ChevronRight size={16} />
             </button>
             <button
@@ -162,11 +186,11 @@ export default function Settings() {
                 await signOut();
               }}
             >
-              <span className="flex-1">Sign out of all devices</span>
+              <span className="flex-1">{t('sign_out_all')}</span>
               <ChevronRight size={16} />
             </button>
             <button type="button" className="list-row list-row-link" onClick={signOut}>
-              <span className="flex-1">Sign out</span>
+              <span className="flex-1">{t('sign_out')}</span>
               <ChevronRight size={16} />
             </button>
           </div>
@@ -174,7 +198,7 @@ export default function Settings() {
 
         <section className="panel">
           <div className="panel-head">
-            <span className="micro">Privacy choices</span>
+            <span className="micro">{t('privacy_choices')}</span>
           </div>
           <div className="panel-body stack">
             {OPTIONAL.map((kind) => (
@@ -185,9 +209,15 @@ export default function Settings() {
                   onChange={(event) => void toggleConsent(kind, event.target.checked)}
                 />
                 <span className="t-sm">
-                  {CONSENT_SCOPE[kind].purpose}
+                  {/* English shows the recorded wording itself; Hindi a translation of it. */}
+                  {locale === 'hi' ? t(`consent_${kind}` as StringKey) : CONSENT_SCOPE[kind].purpose}
                   <span className="field-hint" style={{ display: 'block' }}>
-                    Uses: {CONSENT_SCOPE[kind].dataItems.join(', ')}. Optional — off unless you turn it on.
+                    {t('uses_optional', {
+                      items:
+                        locale === 'hi'
+                          ? t(`consent_${kind}_items` as StringKey)
+                          : CONSENT_SCOPE[kind].dataItems.join(', '),
+                    })}
                   </span>
                 </span>
               </label>
@@ -197,23 +227,20 @@ export default function Settings() {
 
         <section className="panel">
           <div className="panel-head">
-            <span className="micro">Your data</span>
+            <span className="micro">{t('your_data')}</span>
           </div>
           <div className="panel-body">
-            <p className="muted t-sm mb-3">
-              Under India’s Digital Personal Data Protection Act you can get a copy of everything we
-              hold about you, and have it erased.
-            </p>
+            <p className="muted t-sm mb-3">{t('your_data_body')}</p>
             <div className="stack stack-sm">
               <button type="button" className="btn btn-secondary btn-block" onClick={downloadExport}>
-                Download my data
+                {t('download_data')}
               </button>
               <button
                 type="button"
                 className="btn btn-danger btn-block"
                 onClick={() => setDeleteOpen(true)}
               >
-                Delete my account
+                {t('delete_account')}
               </button>
             </div>
           </div>
@@ -221,17 +248,20 @@ export default function Settings() {
 
         <section className="panel">
           <div className="panel-head">
-            <span className="micro">Legal</span>
+            <span className="micro">{t('legal')}</span>
+            {locale === 'hi' && <span className="t-xs muted">{t('legal_english_only')}</span>}
           </div>
           <div className="list" style={{ border: 'none', borderRadius: 0 }}>
-            {[
-              { to: '/privacy', label: 'Privacy Policy' },
-              { to: '/terms', label: 'Terms of Service' },
-              { to: '/medical-disclaimer', label: 'Medical Disclaimer' },
-              { to: '/cookies', label: 'Cookies' },
-            ].map((item) => (
+            {(
+              [
+                { to: '/privacy', label: 'privacy_policy' },
+                { to: '/terms', label: 'terms_of_service' },
+                { to: '/medical-disclaimer', label: 'medical_disclaimer' },
+                { to: '/cookies', label: 'cookies' },
+              ] as const
+            ).map((item) => (
               <Link key={item.to} className="list-row list-row-link" to={item.to}>
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1">{t(item.label)}</span>
                 <ChevronRight size={16} />
               </Link>
             ))}
@@ -246,6 +276,7 @@ export default function Settings() {
 }
 
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const { t } = useT();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
@@ -261,19 +292,19 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
       tokens.set(result.accessToken, result.refreshToken);
       setDone(true);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not change your password.');
+      setError(caught instanceof ApiError ? caught.message : t('password_change_failed'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title="Change password" onClose={onClose}>
+    <Modal title={t('change_password')} onClose={onClose}>
       {done ? (
         <div className="stack">
-          <SuccessBanner message="Password updated. Your other devices have been signed out." />
+          <SuccessBanner message={t('password_updated')} />
           <button type="button" className="btn btn-primary btn-block" onClick={onClose}>
-            Done
+            {t('done')}
           </button>
         </div>
       ) : (
@@ -281,7 +312,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
           {error && <ErrorBanner message={error} />}
           <div className="field">
             <label className="label" htmlFor="current">
-              Current password
+              {t('current_password')}
             </label>
             <input
               id="current"
@@ -295,7 +326,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="field">
             <label className="label" htmlFor="new">
-              New password
+              {t('new_password')}
             </label>
             <input
               id="new"
@@ -306,10 +337,10 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
             />
-            <span className="field-hint">At least 10 characters.</span>
+            <span className="field-hint">{t('password_min')}</span>
           </div>
           <button className="action-primary" type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Change password'}
+            {t(busy ? 'saving' : 'change_password')}
           </button>
         </form>
       )}
@@ -324,6 +355,7 @@ function DeleteAccountModal({
   onClose: () => void;
   onDeleted: () => Promise<void>;
 }) {
+  const { t } = useT();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState('');
@@ -339,19 +371,19 @@ function DeleteAccountModal({
       setResult(response.message);
       await onDeleted();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not process that request.');
+      setError(caught instanceof ApiError ? caught.message : t('request_failed'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title="Delete your account" onClose={onClose}>
+    <Modal title={t('delete_title')} onClose={onClose}>
       {result ? (
         <div className="stack">
           <SuccessBanner message={result} />
           <button type="button" className="btn btn-primary btn-block" onClick={onClose}>
-            Close
+            {t('close')}
           </button>
         </div>
       ) : (
@@ -361,20 +393,16 @@ function DeleteAccountModal({
           <div className="alert alert-warn">
             <AlertTriangle size={18} />
             <div>
-              <strong>This erases everything.</strong>
-              <p className="t-xs mt-2">
-                Your medicines, your full dose history, appointments and caregiver links. Caregivers
-                lose access immediately. There is a grace period during which you can change your
-                mind by signing in — after that it cannot be undone.
-              </p>
+              <strong>{t('erases_everything')}</strong>
+              <p className="t-xs mt-2">{t('erases_body')}</p>
             </div>
           </div>
 
-          <p className="muted t-sm">Consider downloading your data first.</p>
+          <p className="muted t-sm">{t('download_first')}</p>
 
           <div className="field">
             <label className="label" htmlFor="delete-password">
-              Your password
+              {t('your_password')}
             </label>
             <input
               id="delete-password"
@@ -388,7 +416,7 @@ function DeleteAccountModal({
 
           <div className="field">
             <label className="label" htmlFor="confirmation">
-              Type <code>DELETE MY ACCOUNT</code> to confirm
+              {interleave(t('type_to_confirm'), { phrase: <code>DELETE MY ACCOUNT</code> })}
             </label>
             <input
               id="confirmation"
@@ -400,10 +428,10 @@ function DeleteAccountModal({
           </div>
 
           <button className="btn btn-danger btn-block btn-lg" type="submit" disabled={busy}>
-            {busy ? 'Processing…' : 'Delete my account'}
+            {t(busy ? 'processing' : 'delete_account')}
           </button>
           <button type="button" className="btn btn-secondary btn-block" onClick={onClose}>
-            Keep my account
+            {t('keep_account')}
           </button>
         </form>
       )}

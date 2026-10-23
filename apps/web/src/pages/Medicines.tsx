@@ -1,21 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { formatTime12h } from '@medtrack/shared';
+import { formatTimeFor } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { medicinesApi, type MedicineWithStock } from '../api/endpoints.js';
 import { EmptyState, ErrorBanner, Modal, ScreenHeader, Spinner } from '../components/ui.js';
 import { AlertTriangle, Package, Pill, Plus } from '../components/icons.js';
 import { ColorDot } from '../components/recognition.js';
-
-const SCHEDULE_LABEL: Record<string, string> = {
-  daily: 'Every day',
-  interval_days: 'Every few days',
-  days_of_week: 'Certain days',
-  cyclic: 'On and off',
-  as_needed: 'When needed',
-};
+import { useT, type StringKey } from '../i18n/index.js';
 
 export default function Medicines() {
+  const { t, locale, date } = useT();
   const [medicines, setMedicines] = useState<MedicineWithStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,41 +21,39 @@ export default function Medicines() {
       const { medicines: list } = await medicinesApi.list();
       setMedicines(list);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not load your medicines.');
+      setError(caught instanceof ApiError ? caught.message : t('meds_load_failed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function archive(medicine: MedicineWithStock) {
-    const confirmed = window.confirm(
-      `Stop reminders for ${medicine.name}?\n\nYour history is kept — you can restore it later.`,
-    );
+    const confirmed = window.confirm(t('stop_confirm', { name: medicine.name }));
     if (!confirmed) return;
 
     try {
       await medicinesApi.archive(medicine.id);
       await load();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not archive that medicine.');
+      setError(caught instanceof ApiError ? caught.message : t('archive_failed'));
     }
   }
 
-  if (loading) return <Spinner label="Loading medicines" />;
+  if (loading) return <Spinner label={t('loading_medicines')} />;
 
   return (
     <div>
       <ScreenHeader
-        eyebrow={medicines.length > 0 ? `${medicines.length} active` : undefined}
-        title="Medicines"
+        eyebrow={medicines.length > 0 ? t('n_active', { n: medicines.length }) : undefined}
+        title={t('medicines_title')}
         action={
           <Link className="btn btn-primary btn-sm" to="/app/medicines/new">
             <Plus size={16} />
-            Add
+            {t('add')}
           </Link>
         }
       />
@@ -71,11 +63,11 @@ export default function Medicines() {
       {medicines.length === 0 ? (
         <EmptyState
           icon={<Pill size={22} />}
-          title="No medicines yet"
-          description="Add your first medicine and MedTrack builds a daily schedule and starts reminding you."
+          title={t('meds_empty_title')}
+          description={t('meds_empty_body')}
           action={
             <Link className="btn btn-primary" to="/app/medicines/new">
-              Add a medicine
+              {t('add_a_medicine')}
             </Link>
           }
         />
@@ -94,9 +86,9 @@ export default function Medicines() {
               >
                 <div className="panel-head">
                   <span className="micro truncate">
-                    {SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind}
+                    {t(`sched_${medicine.schedule.kind}` as StringKey)}
                   </span>
-                  {medicine.isCritical && <span className="badge badge-danger">Critical</span>}
+                  {medicine.isCritical && <span className="badge badge-danger">{t('critical')}</span>}
                 </div>
 
                 <div className="panel-body">
@@ -111,7 +103,7 @@ export default function Medicines() {
                         </h2>
                       </div>
                       <p className="subtle">
-                        {[medicine.strength, medicine.purpose && `for ${medicine.purpose}`]
+                        {[medicine.strength, medicine.purpose && t('for_purpose', { purpose: medicine.purpose })]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
@@ -122,7 +114,7 @@ export default function Medicines() {
                     <div className="row row-wrap mt-3" style={{ gap: 'var(--s2)' }}>
                       {medicine.schedule.times.map((time) => (
                         <span key={time} className="badge badge-neutral numeric">
-                          {formatTime12h(time)}
+                          {formatTimeFor(time, locale)}
                         </span>
                       ))}
                     </div>
@@ -138,9 +130,13 @@ export default function Medicines() {
                     <div className={`alert ${low ? 'alert-warn' : 'alert-info'} mt-3`}>
                       <Package size={18} />
                       <div className="flex-1">
-                        <strong>{medicine.dosesRemaining ?? 0} doses left</strong>
+                        <strong>
+                          {t(medicine.dosesRemaining === 1 ? 'doses_left_one' : 'doses_left_other', {
+                            n: medicine.dosesRemaining ?? 0,
+                          })}
+                        </strong>
                         {medicine.projectedRunOut && (
-                          <span className="t-xs"> · runs out around {medicine.projectedRunOut}</span>
+                          <span className="t-xs">{t('runs_out_suffix', { date: date(medicine.projectedRunOut) })}</span>
                         )}
                       </div>
                       <button
@@ -148,21 +144,21 @@ export default function Medicines() {
                         className="btn btn-sm btn-secondary"
                         onClick={() => setRefillTarget(medicine)}
                       >
-                        Refill
+                        {t('refill')}
                       </button>
                     </div>
                   )}
 
                   <div className="row mt-4" style={{ gap: 'var(--s2)' }}>
                     <Link className="btn btn-secondary btn-sm" to={`/app/medicines/${medicine.id}/edit`}>
-                      Edit
+                      {t('edit')}
                     </Link>
                     <button
                       type="button"
                       className="btn btn-ghost btn-sm"
                       onClick={() => archive(medicine)}
                     >
-                      Stop reminders
+                      {t('stop_reminders')}
                     </button>
                   </div>
                 </div>
@@ -195,6 +191,7 @@ function RefillModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useT();
   const [units, setUnits] = useState('30');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -202,7 +199,7 @@ function RefillModal({
   async function submit() {
     const value = Number(units);
     if (!Number.isFinite(value) || value <= 0) {
-      setError('Enter how many you added.');
+      setError(t('enter_units'));
       return;
     }
     setBusy(true);
@@ -210,14 +207,14 @@ function RefillModal({
       await medicinesApi.refill(medicine.id, value);
       onDone();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not record that refill.');
+      setError(caught instanceof ApiError ? caught.message : t('refill_failed'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title={`Refill ${medicine.name}`} onClose={onClose}>
+    <Modal title={t('refill_named', { name: medicine.name })} onClose={onClose}>
       <div className="stack">
         {error && (
           <div className="alert alert-error" role="alert">
@@ -227,7 +224,7 @@ function RefillModal({
         )}
         <div className="field">
           <label className="label" htmlFor="units">
-            How many did you add?
+            {t('how_many_added')}
           </label>
           <input
             id="units"
@@ -239,11 +236,11 @@ function RefillModal({
             onChange={(event) => setUnits(event.target.value)}
           />
           <span className="field-hint">
-            Individual tablets or units, not packs. Currently {medicine.stock?.unitsRemaining ?? 0} left.
+            {t('units_hint', { n: medicine.stock?.unitsRemaining ?? 0 })}
           </span>
         </div>
         <button type="button" className="action-primary" onClick={submit} disabled={busy}>
-          {busy ? 'Saving…' : 'Add to supply'}
+          {t(busy ? 'saving' : 'add_to_supply')}
         </button>
       </div>
     </Modal>

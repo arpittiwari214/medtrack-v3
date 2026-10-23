@@ -17,7 +17,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { User } from '@medtrack/shared';
-import { setSessionEndedHandler, tokens } from '../api/client.js';
+import { ApiError, setSessionEndedHandler, tokens } from '../api/client.js';
 import { authApi } from '../api/endpoints.js';
 
 interface AuthContextValue {
@@ -41,6 +41,8 @@ export interface SignUpInput {
   acceptedTerms: true;
   acceptedPrivacy: true;
   marketingEmail?: boolean;
+  /** Language the consent notice was shown in. */
+  language?: 'en' | 'hi';
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -63,15 +65,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      try {
-        const { user: current } = await authApi.me();
-        if (!cancelled) setUser(current);
-      } catch {
-        tokens.clear();
-        if (!cancelled) setUser(null);
-      } finally {
-        if (!cancelled) setLoading(false);
+      // A server restarting or waking from sleep answers 502/503 for a moment;
+      // that is not a signed-out user, and clearing the tokens here used to
+      // sign people out over it. Only a 401 ends the session — the client
+      // clears the tokens itself — so anything else is retried briefly.
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        try {
+          const { user: current } = await authApi.me();
+          if (!cancelled) setUser(current);
+          break;
+        } catch (caught) {
+          if (caught instanceof ApiError && caught.status === 401) break;
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
       }
+      if (!cancelled) setLoading(false);
     }
 
     void verify();

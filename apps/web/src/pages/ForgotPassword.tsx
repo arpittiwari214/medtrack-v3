@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { authApi } from '../api/endpoints.js';
 import { SuccessBanner } from '../components/ui.js';
 import { Pill } from '../components/icons.js';
+import { useT } from '../i18n/index.js';
 
 export default function ForgotPassword() {
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -26,28 +28,26 @@ export default function ForgotPassword() {
   return (
     <main id="main" className="auth-shell">
       <div className="auth-head">
-        <Link to="/" className="brand-mark mb-4" aria-label="MedTrack home">
+        <Link to="/" className="brand-mark mb-4" aria-label={t('medtrack_home')}>
           <Pill size={20} />
           MedTrack
         </Link>
-        <h1 className="t-title">Reset your password</h1>
+        <h1 className="t-title">{t('reset_title')}</h1>
       </div>
 
       {sent ? (
         <div className="panel panel-pad stack">
-          <SuccessBanner message="If that email has an account, a reset link is on its way. It expires in an hour." />
+          <SuccessBanner message={t('reset_sent')} />
           <Link className="btn btn-secondary btn-block" to="/login">
-            Back to sign in
+            {t('back_to_sign_in')}
           </Link>
         </div>
       ) : (
         <form className="panel panel-pad stack" onSubmit={handleSubmit}>
-          <p className="muted t-sm">
-            Enter your email address and we’ll send you a link to choose a new password.
-          </p>
+          <p className="muted t-sm">{t('reset_intro')}</p>
           <div className="field">
             <label className="label" htmlFor="email">
-              Email address
+              {t('email')}
             </label>
             <input
               id="email"
@@ -60,11 +60,11 @@ export default function ForgotPassword() {
             />
           </div>
           <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
-            {busy ? 'Sending…' : 'Send reset link'}
+            {t(busy ? 'sending' : 'send_reset')}
           </button>
           <div className="center">
             <Link className="t-sm" to="/login">
-              Back to sign in
+              {t('back_to_sign_in')}
             </Link>
           </div>
         </form>

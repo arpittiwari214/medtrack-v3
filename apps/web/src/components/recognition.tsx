@@ -9,11 +9,12 @@ import {
   DOSE_SLOTS,
   MEDICINE_COLORS,
   MEDICINE_COLOR_HEX,
-  MEDICINE_COLOR_LABEL,
+  colorLabel,
   slotNotation,
   slotOf,
   type MedicineColor,
 } from '@medtrack/shared';
+import { useT } from '../i18n/index.js';
 
 export function ColorPicker({
   label,
@@ -26,6 +27,7 @@ export function ColorPicker({
   onChange: (next: MedicineColor | null) => void;
   name: string;
 }) {
+  const { locale } = useT();
   return (
     <fieldset className="field" style={{ border: 'none', padding: 0, margin: 0 }}>
       <legend className="label mb-3">{label}</legend>
@@ -45,7 +47,7 @@ export function ColorPicker({
               onClick={() => onChange(selected ? null : color)}
             >
               <span className="swatch-dot" style={{ background: MEDICINE_COLOR_HEX[color] }} />
-              {MEDICINE_COLOR_LABEL[color]}
+              {colorLabel(color, locale)}
             </button>
           );
         })}
@@ -56,12 +58,13 @@ export function ColorPicker({
 
 /** A small colour dot with its word, for lists and dose rows. */
 export function ColorDot({ color, size = 12 }: { color: MedicineColor | null | undefined; size?: number }) {
+  const { locale } = useT();
   if (!color) return null;
   return (
     <span
       className="swatch-dot"
       role="img"
-      aria-label={MEDICINE_COLOR_LABEL[color]}
+      aria-label={colorLabel(color, locale)}
       style={{ background: MEDICINE_COLOR_HEX[color], width: size, height: size }}
     />
   );
@@ -79,6 +82,7 @@ export function SlotPicker({
   times: string[];
   onChange: (next: string[]) => void;
 }) {
+  const { t, locale } = useT();
   const active = new Set(times.map(slotOf));
 
   function toggle(slot: (typeof DOSE_SLOTS)[number]) {
@@ -91,7 +95,7 @@ export function SlotPicker({
 
   return (
     <div className="field">
-      <span className="label">Time of day</span>
+      <span className="label">{t('time_of_day')}</span>
       <div className="row row-wrap" style={{ gap: 'var(--s2)' }}>
         {DOSE_SLOTS.map((slot) => (
           <button
@@ -101,10 +105,10 @@ export function SlotPicker({
             aria-pressed={active.has(slot.id)}
             onClick={() => toggle(slot)}
           >
-            {slot.label}
+            {locale === 'hi' ? slot.labelHi : slot.label}
           </button>
         ))}
-        <span className="t-sm muted numeric" aria-label="Prescription notation">
+        <span className="t-sm muted numeric" aria-label={t('prescription_notation')}>
           {slotNotation(times)}
         </span>
       </div>

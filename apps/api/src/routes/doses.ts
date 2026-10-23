@@ -11,6 +11,7 @@ import {
   byMedicine,
   dailySeries,
   insights,
+  localeFrom,
   listDosesSchema,
   logAdHocDoseSchema,
   skipDoseSchema,
@@ -111,7 +112,8 @@ router.get('/analytics', async (req, res, next) => {
       summary: summarise(domain, context),
       perMedicine: byMedicine(domain, context),
       daily: dailySeries(domain, from, today),
-      insights: insights(domain, context),
+      // Tips are written on the server, so they come back in the reader's language.
+      insights: insights(domain, context, localeFrom(String(req.query['locale'] ?? ''))),
     });
   } catch (error) {
     next(error);

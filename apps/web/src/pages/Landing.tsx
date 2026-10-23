@@ -1,50 +1,29 @@
 import { Link } from 'react-router-dom';
+import { formatTimeFor, type DoseStatus } from '@medtrack/shared';
 import { AlertTriangle, Bell, Chart, Clock, Package, Pill, Stethoscope, Users } from '../components/icons.js';
+import { useT } from '../i18n/index.js';
 import './landing.css';
 
 const FEATURES = [
-  {
-    Icon: Bell,
-    name: 'Reminders that arrive',
-    body: 'Notifications are scheduled on your device, so they fire on time whether or not the app is open, the phone is locked, or you have signal.',
-  },
-  {
-    Icon: Clock,
-    name: 'Snooze that comes back',
-    body: 'Ask for ten more minutes and the reminder returns in ten minutes. A deferred dose is never quietly dropped from the day.',
-  },
-  {
-    Icon: Package,
-    name: 'Know before you run out',
-    body: 'Track how many doses you have left and get told while there is still time to order more — not on the morning you take the last one.',
-  },
-  {
-    Icon: Users,
-    name: 'Caregivers, on your terms',
-    body: 'Invite someone you trust and choose exactly what they can see. Withdraw it whenever you like, without asking them first.',
-  },
-  {
-    Icon: Chart,
-    name: 'Patterns, not scolding',
-    body: 'See when doses actually slip — most people miss at a particular time of day — instead of one number that only ever goes down.',
-  },
-  {
-    Icon: Stethoscope,
-    name: 'Appointments and tests',
-    body: 'Keep visits and lab tests alongside your medicines, with reminders the day before and an hour ahead.',
-  },
-];
+  { Icon: Bell, key: 'feat_reminders' },
+  { Icon: Clock, key: 'feat_snooze' },
+  { Icon: Package, key: 'feat_supply' },
+  { Icon: Users, key: 'feat_caregivers' },
+  { Icon: Chart, key: 'feat_patterns' },
+  { Icon: Stethoscope, key: 'feat_visits' },
+] as const;
 
 /** A real fragment of the app, using the same rail markup the product uses. */
-const PREVIEW_DOSES = [
-  { time: '8:00 AM', name: 'Metformin', strength: '500 mg', status: 'taken', state: 'Taken' },
-  { time: '9:00 AM', name: 'Amlodipine', strength: '5 mg', status: 'taken', state: 'Taken' },
-  { time: '2:00 PM', name: 'Vitamin D', strength: '1000 IU', status: 'snoozed', state: 'Snoozed' },
-  { time: '9:00 PM', name: 'Metformin', strength: '500 mg', status: 'scheduled', state: 'Due' },
-  { time: '10:00 PM', name: 'Atorvastatin', strength: '10 mg', status: 'scheduled', state: 'Due' },
+const PREVIEW_DOSES: { time: string; name: string; strength: string; status: DoseStatus }[] = [
+  { time: '08:00', name: 'Metformin', strength: '500 mg', status: 'taken' },
+  { time: '09:00', name: 'Amlodipine', strength: '5 mg', status: 'taken' },
+  { time: '14:00', name: 'Vitamin D', strength: '1000 IU', status: 'snoozed' },
+  { time: '21:00', name: 'Metformin', strength: '500 mg', status: 'scheduled' },
+  { time: '22:00', name: 'Atorvastatin', strength: '10 mg', status: 'scheduled' },
 ];
 
 export default function Landing() {
+  const { t, locale, setPreference } = useT();
   return (
     <>
       <header className="site-header">
@@ -53,12 +32,22 @@ export default function Landing() {
             <Pill size={20} />
             MedTrack
           </Link>
-          <nav className="row" aria-label="Account">
+          <nav className="row" aria-label={t('nav_account')}>
+            {/* Each label is written in its own language, so it can be found by someone who reads only that one. */}
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              aria-label={t('switch_language')}
+              lang={locale === 'hi' ? 'en' : 'hi'}
+              onClick={() => setPreference(locale === 'hi' ? 'en' : 'hi')}
+            >
+              {locale === 'hi' ? 'English' : 'हिन्दी'}
+            </button>
             <Link className="btn btn-ghost btn-sm" to="/login">
-              Sign in
+              {t('sign_in')}
             </Link>
             <Link className="btn btn-primary btn-sm" to="/signup">
-              Create account
+              {t('create_account_btn')}
             </Link>
           </nav>
         </div>
@@ -67,24 +56,18 @@ export default function Landing() {
       <main id="main">
         <section className="container hero">
           <div>
-            <p className="micro">Medication adherence</p>
-            <h1>Take the right medicine at the right time.</h1>
-            <p className="hero-lede">
-              MedTrack keeps track of what you need to take and when, tells you before you run out,
-              and quietly keeps the people who care about you in the loop — only as much as you want
-              them to be.
-            </p>
+            <p className="micro">{t('hero_eyebrow')}</p>
+            <h1>{t('hero_title')}</h1>
+            <p className="hero-lede">{t('hero_lede')}</p>
             <div className="hero-actions">
               <Link className="btn btn-primary btn-lg" to="/signup">
-                Get started — it’s free
+                {t('get_started')}
               </Link>
               <Link className="btn btn-secondary btn-lg" to="/login">
-                I have an account
+                {t('have_account_btn')}
               </Link>
             </div>
-            <p className="subtle mt-4">
-              No card required. Your data is yours — export or delete it whenever you want.
-            </p>
+            <p className="subtle mt-4">{t('no_card')}</p>
           </div>
 
           {/* The preview is the product, not an illustration of it. */}
@@ -94,12 +77,12 @@ export default function Landing() {
               <span className="preview-dot" />
               <span className="preview-dot" />
               <span className="micro" style={{ marginLeft: 'auto' }}>
-                Today
+                {t('today_label')}
               </span>
             </div>
             <div className="preview-body">
               <div className="day-progress" style={{ marginTop: 0 }}>
-                <span className="micro">Today</span>
+                <span className="micro">{t('today_label')}</span>
                 <div className="day-segments">
                   <span className="day-segment day-segment-taken" />
                   <span className="day-segment day-segment-taken" />
@@ -112,14 +95,14 @@ export default function Landing() {
 
               {PREVIEW_DOSES.map((dose) => (
                 <div key={dose.time + dose.name} className="rail-row rail-row-static">
-                  <span className="rail-time">{dose.time}</span>
+                  <span className="rail-time">{formatTimeFor(dose.time, locale)}</span>
                   <span className="rail-marker">
                     <span className={`rail-dot rail-dot-${dose.status}`} />
                   </span>
                   <span className="rail-name">
                     {dose.name} <span className="rail-strength">{dose.strength}</span>
                   </span>
-                  <span className={`rail-state rail-state-${dose.status}`}>{dose.state}</span>
+                  <span className={`rail-state rail-state-${dose.status}`}>{t(`state_${dose.status}`)}</span>
                 </div>
               ))}
             </div>
@@ -128,14 +111,14 @@ export default function Landing() {
 
         <section className="container" style={{ paddingBottom: 'var(--s8)' }}>
           <div className="section-head">
-            <h2 className="micro">What it does</h2>
+            <h2 className="micro">{t('what_it_does')}</h2>
           </div>
 
-          {FEATURES.map(({ Icon, name, body }) => (
-            <article key={name} className="feature-row">
+          {FEATURES.map(({ Icon, key }) => (
+            <article key={key} className="feature-row">
               <Icon size={22} />
-              <h3 className="feature-name">{name}</h3>
-              <p className="feature-body">{body}</p>
+              <h3 className="feature-name">{t(key)}</h3>
+              <p className="feature-body">{t(`${key}_b`)}</p>
             </article>
           ))}
         </section>
@@ -146,12 +129,9 @@ export default function Landing() {
           <div className="alert alert-warn">
             <AlertTriangle size={20} />
             <div>
-              <strong>MedTrack is a reminder tool, not a medical device.</strong>
+              <strong>{t('not_a_device')}</strong>
               <p className="mt-2">
-                It does not give medical advice, and it should never be your only safeguard for a
-                critical medication. Always follow the instructions from your doctor or pharmacist,
-                and talk to them before changing anything about how you take a medicine.{' '}
-                <Link to="/medical-disclaimer">Read the full disclaimer</Link>.
+                {t('not_advice')} <Link to="/medical-disclaimer">{t('read_disclaimer')}</Link>
               </p>
             </div>
           </div>
@@ -162,22 +142,19 @@ export default function Landing() {
         <div className="container stack">
           <ul className="footer-links">
             <li>
-              <Link to="/privacy">Privacy Policy</Link>
+              <Link to="/privacy">{t('privacy_policy')}</Link>
             </li>
             <li>
-              <Link to="/terms">Terms of Service</Link>
+              <Link to="/terms">{t('terms_of_service')}</Link>
             </li>
             <li>
-              <Link to="/medical-disclaimer">Medical Disclaimer</Link>
+              <Link to="/medical-disclaimer">{t('medical_disclaimer')}</Link>
             </li>
             <li>
-              <Link to="/cookies">Cookies</Link>
+              <Link to="/cookies">{t('cookies')}</Link>
             </li>
           </ul>
-          <p className="subtle">
-            © {new Date().getFullYear()} MedTrack. Built in India. Personal data is handled under the
-            Digital Personal Data Protection Act, 2023.
-          </p>
+          <p className="subtle">{t('footer_note', { year: new Date().getFullYear() })}</p>
         </div>
       </footer>
     </>

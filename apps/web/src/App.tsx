@@ -14,6 +14,7 @@
 import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.js';
+import { useT } from './i18n/index.js';
 import { Spinner } from './components/ui.js';
 
 import Landing from './pages/Landing.js';
@@ -42,9 +43,10 @@ const Cookies = lazy(() => import('./pages/legal/Cookies.js'));
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { t } = useT();
   const location = useLocation();
 
-  if (loading) return <Spinner label="Checking your session" />;
+  if (loading) return <Spinner label={t('checking_session')} />;
   if (!user) {
     // Remember where they were headed so sign-in can return them there.
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -54,16 +56,18 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RedirectIfSignedIn({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <Spinner label="Checking your session" />;
+  const { t } = useT();
+  if (loading) return <Spinner label={t('checking_session')} />;
   if (user) return <Navigate to="/app" replace />;
   return <>{children}</>;
 }
 
 export default function App() {
+  const { t } = useT();
   return (
     <>
       <a className="skip-link" href="#main">
-        Skip to content
+        {t('skip_to_content')}
       </a>
       <Suspense fallback={<Spinner />}>
         <Routes>

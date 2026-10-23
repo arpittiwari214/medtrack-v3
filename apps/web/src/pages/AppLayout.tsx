@@ -17,10 +17,12 @@ import { LEGAL_DOCUMENT_VERSIONS, outdatedConsents, type ConsentKind } from '@me
 import { accountApi, alertsApi } from '../api/endpoints.js';
 import { useAuth } from '../context/AuthContext.js';
 import { BottomNav, ErrorBanner } from '../components/ui.js';
+import { interleave, useT } from '../i18n/index.js';
 import { AlertTriangle } from '../components/icons.js';
 
 export default function AppLayout() {
   const { user, refresh } = useAuth();
+  const { t } = useT();
   const [unacknowledged, setUnacknowledged] = useState(0);
   const [cancelling, setCancelling] = useState(false);
   const { pathname } = useLocation();
@@ -58,17 +60,15 @@ export default function AppLayout() {
           <div className="alert alert-warn mt-4" role="alert">
             <AlertTriangle size={18} />
             <div className="flex-1">
-              <strong>Your account is scheduled for deletion.</strong>
-              <p className="t-xs mt-2">
-                All your data will be permanently erased when the grace period ends.
-              </p>
+              <strong>{t('deletion_pending')}</strong>
+              <p className="t-xs mt-2">{t('deletion_pending_body')}</p>
               <button
                 type="button"
                 className="btn btn-sm btn-secondary mt-3"
                 onClick={cancelDeletion}
                 disabled={cancelling}
               >
-                {cancelling ? 'Cancelling…' : 'Keep my account'}
+                {t(cancelling ? 'cancelling' : 'keep_account')}
               </button>
             </div>
           </div>
@@ -81,8 +81,7 @@ export default function AppLayout() {
         )}
 
         <p className="subtle center" style={{ marginTop: 'var(--s7)' }}>
-          MedTrack is a reminder tool, not a medical device.{' '}
-          <Link to="/medical-disclaimer">What that means</Link>
+          {t('not_a_device')} <Link to="/medical-disclaimer">{t('what_that_means')}</Link>
         </p>
       </main>
 
@@ -92,13 +91,10 @@ export default function AppLayout() {
 }
 
 /** Plain-language summary of the latest policy change. Rewrite it with each version bump. */
-const WHAT_CHANGED = [
-  'You can now choose to let MedTrack use your medicines and dose history — with your name, email and phone removed — for research into why doses are missed. It stays off unless you turn it on in Settings.',
-  'A record of privacy actions (consents, downloads, deletion requests) is kept for one year, even after an account is deleted. It holds no name, email or health details.',
-  'Accounts are for people aged 18 or over.',
-];
+const WHAT_CHANGED = ['policy_change_1', 'policy_change_2', 'policy_change_3'] as const;
 
 function ReconsentGate({ kinds, onDone }: { kinds: ConsentKind[]; onDone: () => Promise<void> }) {
+  const { t, locale } = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -106,10 +102,10 @@ function ReconsentGate({ kinds, onDone }: { kinds: ConsentKind[]; onDone: () => 
     setBusy(true);
     setError('');
     try {
-      for (const kind of kinds) await accountApi.updateConsent({ kind, granted: true });
+      for (const kind of kinds) await accountApi.updateConsent({ kind, granted: true, language: locale });
       await onDone();
     } catch {
-      setError('Could not save that. Please try again.');
+      setError(t('could_not_save'));
     } finally {
       setBusy(false);
     }
@@ -118,30 +114,33 @@ function ReconsentGate({ kinds, onDone }: { kinds: ConsentKind[]; onDone: () => 
   return (
     <section className="panel panel-pad stack mt-4" aria-labelledby="reconsent-title">
       <h1 id="reconsent-title" className="t-title">
-        We have updated our Privacy Policy
+        {t('policy_updated')}
       </h1>
-      <p className="muted t-sm">Version {LEGAL_DOCUMENT_VERSIONS.privacy_policy}. What changed:</p>
+      <p className="muted t-sm">
+        {t('policy_version_changed', { version: LEGAL_DOCUMENT_VERSIONS.privacy_policy })}
+      </p>
       <ul className="t-sm stack stack-sm" style={{ paddingLeft: 'var(--s5)' }}>
-        {WHAT_CHANGED.map((line) => (
-          <li key={line}>{line}</li>
+        {WHAT_CHANGED.map((key) => (
+          <li key={key}>{t(key)}</li>
         ))}
       </ul>
       <p className="t-sm">
         <Link to="/privacy" target="_blank">
-          Read the full Privacy Policy
+          {t('read_privacy')}
         </Link>{' '}
         ·{' '}
         <Link to="/terms" target="_blank">
-          Terms of Service
+          {t('terms_of_service')}
         </Link>
       </p>
       {error && <ErrorBanner message={error} />}
       <button type="button" className="btn btn-primary" onClick={agree} disabled={busy}>
-        {busy ? 'Saving…' : 'I agree'}
+        {t(busy ? 'saving' : 'i_agree')}
       </button>
       <p className="muted t-xs">
-        If you do not agree, you can download your data or delete your account in{' '}
-        <Link to="/app/settings">Settings</Link>.
+        {interleave(t('policy_disagree'), {
+          settings: <Link to="/app/settings">{t('tab_settings')}</Link>,
+        })}
       </p>
     </section>
   );

@@ -117,7 +117,8 @@ export const dosesApi = {
       `/doses?${query.toString()}`,
     );
   },
-  analytics: (days = 30) => api.get<AnalyticsResponse>(`/doses/analytics?days=${days}`),
+  analytics: (days = 30, locale = 'en') =>
+    api.get<AnalyticsResponse>(`/doses/analytics?days=${days}&locale=${locale}`),
   take: (id: string, takenAt?: string) =>
     api.post<{ dose: DoseEvent }>(`/doses/${id}/take`, takenAt ? { takenAt } : {}),
   snooze: (id: string, minutes: number) =>
@@ -170,7 +171,7 @@ export const alertsApi = {
 
 export const accountApi = {
   consents: () => api.get<{ consents: ConsentRecord[]; currentVersions: Record<string, string> }>('/account/consents'),
-  updateConsent: (body: { kind: ConsentKind; granted: boolean }) =>
+  updateConsent: (body: { kind: ConsentKind; granted: boolean; language?: 'en' | 'hi' }) =>
     api.post<{ consents: ConsentRecord[] }>('/account/consents', body),
   requestDeletion: (body: unknown) =>
     api.post<{ message: string; purgeAt: string; graceDays: number }>('/account/delete', body),

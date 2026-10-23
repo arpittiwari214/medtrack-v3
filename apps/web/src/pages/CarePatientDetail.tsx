@@ -9,19 +9,12 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { formatTime12h, type DoseStatus } from '@medtrack/shared';
+import { formatTimeFor } from '@medtrack/shared';
 import { ApiError } from '../api/client.js';
 import { careApi, type PatientOverview } from '../api/endpoints.js';
 import { ErrorBanner, MetricStrip, ScreenHeader, SectionHead, Spinner } from '../components/ui.js';
 import { AlertTriangle } from '../components/icons.js';
-
-const STATE_LABEL: Record<DoseStatus, string> = {
-  taken: 'Taken',
-  missed: 'Missed',
-  snoozed: 'Snoozed',
-  skipped: 'Skipped',
-  scheduled: 'Due',
-};
+import { useT } from '../i18n/index.js';
 
 function band(rate: number): string {
   if (rate >= 80) return 'badge-ok';
@@ -31,6 +24,7 @@ function band(rate: number): string {
 
 export default function CarePatientDetail() {
   const { patientId } = useParams();
+  const { t, locale } = useT();
   const [data, setData] = useState<PatientOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,7 +40,7 @@ export default function CarePatientDetail() {
       } catch (caught) {
         if (!cancelled) {
           setError(
-            caught instanceof ApiError ? caught.message : 'Could not load this person’s information.',
+            caught instanceof ApiError ? caught.message : t('patient_load_failed'),
           );
         }
       } finally {
@@ -58,9 +52,9 @@ export default function CarePatientDetail() {
     return () => {
       cancelled = true;
     };
-  }, [patientId]);
+  }, [patientId, t]);
 
-  if (loading) return <Spinner label="Loading" />;
+  if (loading) return <Spinner />;
 
   if (error) {
     return (
@@ -68,7 +62,7 @@ export default function CarePatientDetail() {
         <div className="mt-5">
           <ErrorBanner message={error} />
           <Link className="btn btn-secondary mt-4" to="/care">
-            Back
+            {t('back')}
           </Link>
         </div>
       </main>
@@ -84,11 +78,11 @@ export default function CarePatientDetail() {
   return (
     <main id="main" className="app-shell" style={{ padding: '0 var(--s4)' }}>
       <ScreenHeader
-        eyebrow="Today at a glance"
+        eyebrow={t('today_glance')}
         title={data.patient.name}
         action={
           <Link className="btn btn-ghost btn-sm" to="/care">
-            Back
+            {t('back')}
           </Link>
         }
       />
@@ -96,9 +90,9 @@ export default function CarePatientDetail() {
       <div className="stack">
         <MetricStrip
           items={[
-            { value: `${data.summary.ratePercent}%`, label: '30 days' },
-            { value: data.summary.streakDays, label: 'Streak' },
-            { value: data.today.taken.length, label: 'Taken today' },
+            { value: `${data.summary.ratePercent}%`, label: t('metric_30_days') },
+            { value: data.summary.streakDays, label: t('metric_streak') },
+            { value: data.today.taken.length, label: t('taken_today') },
           ]}
         />
 
@@ -107,23 +101,24 @@ export default function CarePatientDetail() {
             <AlertTriangle size={18} />
             <div>
               <strong>
-                {data.today.missed.length} missed{' '}
-                {data.today.missed.length === 1 ? 'dose' : 'doses'} today
+                {t(data.today.missed.length === 1 ? 'missed_today_one' : 'missed_today_other', {
+                  n: data.today.missed.length,
+                })}
               </strong>
-              <p className="t-xs mt-2">It may be worth checking in.</p>
+              <p className="t-xs mt-2">{t('worth_checking')}</p>
             </div>
           </div>
         )}
 
-        <SectionHead title="Today" />
+        <SectionHead title={t('today_label')} />
 
         {doses.length === 0 ? (
-          <p className="muted t-sm">Nothing scheduled today.</p>
+          <p className="muted t-sm">{t('nothing_today')}</p>
         ) : (
           <div>
             {doses.map((dose) => (
               <div key={dose.id} className="rail-row rail-row-static">
-                <span className="rail-time">{formatTime12h(dose.localTime)}</span>
+                <span className="rail-time">{formatTimeFor(dose.localTime, locale)}</span>
                 <span className="rail-marker">
                   <span className={`rail-dot rail-dot-${dose.status}`} />
                 </span>
@@ -132,7 +127,7 @@ export default function CarePatientDetail() {
                   <span className="rail-strength">{dose.medicineStrength}</span>
                 </span>
                 <span className={`rail-state rail-state-${dose.status}`}>
-                  {STATE_LABEL[dose.status]}
+                  {t(`state_${dose.status}`)}
                 </span>
               </div>
             ))}
@@ -141,7 +136,7 @@ export default function CarePatientDetail() {
 
         {data.perMedicine.length > 0 && (
           <>
-            <SectionHead title="By medicine" />
+            <SectionHead title={t('by_medicine')} />
             <div className="list">
               {data.perMedicine.map((medicine) => (
                 <div key={medicine.medicineId} className="list-row">
@@ -156,8 +151,7 @@ export default function CarePatientDetail() {
         )}
 
         <p className="subtle mt-4">
-          You are seeing only what {data.patient.name} chose to share. They can change or withdraw
-          this at any time.
+          {t('only_shared', { name: data.patient.name })}
         </p>
       </div>
     </main>

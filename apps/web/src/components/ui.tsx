@@ -9,6 +9,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { DoseStatus } from '@medtrack/shared';
+import { useT, type StringKey } from '../i18n/index.js';
 import {
   AlertTriangle,
   Calendar,
@@ -21,16 +22,18 @@ import {
   Settings,
 } from './icons.js';
 
-export function Spinner({ label = 'Loading' }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
+  const { t } = useT();
   return (
     <div className="row center" style={{ justifyContent: 'center', padding: 'var(--s7)' }}>
       <div className="spinner" />
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{label ?? t('loading')}</span>
     </div>
   );
 }
 
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const { t } = useT();
   return (
     <div className="alert alert-error mb-3" role="alert">
       <AlertTriangle size={18} />
@@ -38,7 +41,7 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
         <div>{message}</div>
         {onRetry && (
           <button type="button" className="btn btn-sm btn-secondary mt-3" onClick={onRetry}>
-            Try again
+            {t('try_again')}
           </button>
         )}
       </div>
@@ -87,17 +90,17 @@ export function EmptyState({
   );
 }
 
-const STATUS_META: Record<DoseStatus, { label: string; className: string }> = {
-  taken: { label: 'Taken', className: 'badge-ok' },
-  missed: { label: 'Missed', className: 'badge-danger' },
-  snoozed: { label: 'Snoozed', className: 'badge-warn' },
-  skipped: { label: 'Skipped', className: 'badge-neutral' },
-  scheduled: { label: 'Due', className: 'badge-info' },
+const STATUS_CLASS: Record<DoseStatus, string> = {
+  taken: 'badge-ok',
+  missed: 'badge-danger',
+  snoozed: 'badge-warn',
+  skipped: 'badge-neutral',
+  scheduled: 'badge-info',
 };
 
 export function StatusBadge({ status }: { status: DoseStatus }) {
-  const meta = STATUS_META[status];
-  return <span className={`badge ${meta.className}`}>{meta.label}</span>;
+  const { t } = useT();
+  return <span className={`badge ${STATUS_CLASS[status]}`}>{t(`state_${status}`)}</span>;
 }
 
 /** A metric strip: several readings in one bordered group, not floating cards. */
@@ -143,17 +146,18 @@ export function SectionHead({ title, aside }: { title: string; aside?: ReactNode
   );
 }
 
-const NAV_ITEMS = [
-  { to: '/app', Icon: Home, label: 'Today', end: true },
-  { to: '/app/medicines', Icon: Pill, label: 'Medicines', end: false },
-  { to: '/app/analytics', Icon: Chart, label: 'Insights', end: false },
-  { to: '/app/appointments', Icon: Calendar, label: 'Visits', end: false },
-  { to: '/app/settings', Icon: Settings, label: 'Settings', end: false },
+const NAV_ITEMS: { to: string; Icon: typeof Home; label: StringKey; end: boolean }[] = [
+  { to: '/app', Icon: Home, label: 'tab_today', end: true },
+  { to: '/app/medicines', Icon: Pill, label: 'tab_medicines', end: false },
+  { to: '/app/analytics', Icon: Chart, label: 'tab_insights', end: false },
+  { to: '/app/appointments', Icon: Calendar, label: 'tab_visits', end: false },
+  { to: '/app/settings', Icon: Settings, label: 'tab_settings', end: false },
 ];
 
 export function BottomNav({ alertCount = 0 }: { alertCount?: number }) {
+  const { t } = useT();
   return (
-    <nav className="bottom-nav" aria-label="Main">
+    <nav className="bottom-nav" aria-label={t('nav_main')}>
       {NAV_ITEMS.map(({ to, Icon, label, end }) => (
         <NavLink key={to} to={to} end={end} className="nav-item">
           <span className="nav-icon">
@@ -164,7 +168,7 @@ export function BottomNav({ alertCount = 0 }: { alertCount?: number }) {
               <span className="nav-badge">{alertCount > 9 ? '9+' : alertCount}</span>
             )}
           </span>
-          {label}
+          {t(label)}
         </NavLink>
       ))}
     </nav>
@@ -184,6 +188,7 @@ export function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const { t } = useT();
   return (
     <div
       className="overlay"
@@ -200,7 +205,7 @@ export function Modal({
       <div className="sheet">
         <div className="row-between mb-4">
           <h2 className="t-lg">{title}</h2>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label={t('close')}>
             <Close size={18} />
           </button>
         </div>

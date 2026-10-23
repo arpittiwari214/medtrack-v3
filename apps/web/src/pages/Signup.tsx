@@ -4,6 +4,7 @@ import { ApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.js';
 import { ErrorBanner } from '../components/ui.js';
 import { Pill } from '../components/icons.js';
+import { interleave, useT } from '../i18n/index.js';
 
 /** The browser's own zone is the right default and is almost always correct. */
 function detectTimeZone(): string {
@@ -17,6 +18,7 @@ function detectTimeZone(): string {
 export default function Signup() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const { t, locale } = useT();
 
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -38,11 +40,11 @@ export default function Signup() {
     setFieldErrors({});
 
     if (!confirmedAdult) {
-      setError('MedTrack accounts are for people aged 18 or over.');
+      setError(t('adults_only'));
       return;
     }
     if (!acceptedTerms) {
-      setError('Please accept the Terms of Service and Privacy Policy to continue.');
+      setError(t('accept_terms_first'));
       return;
     }
 
@@ -56,6 +58,7 @@ export default function Signup() {
         acceptedTerms: true,
         acceptedPrivacy: true,
         marketingEmail,
+        language: locale,
       });
       navigate('/app', { replace: true });
     } catch (caught) {
@@ -63,7 +66,7 @@ export default function Signup() {
         setError(caught.message);
         setFieldErrors(Object.fromEntries(caught.issues.map((i) => [i.path, i.message])));
       } else {
-        setError('Could not reach the server. Check your connection and try again.');
+        setError(t('server_unreachable'));
       }
     } finally {
       setBusy(false);
@@ -73,11 +76,11 @@ export default function Signup() {
   return (
     <main id="main" className="auth-shell">
       <div className="auth-head">
-        <Link to="/" className="brand-mark mb-4" aria-label="MedTrack home">
+        <Link to="/" className="brand-mark mb-4" aria-label={t('medtrack_home')}>
           <Pill size={20} />
           MedTrack
         </Link>
-        <h1 className="t-title">Create your account</h1>
+        <h1 className="t-title">{t('create_your_account')}</h1>
       </div>
 
       <form className="panel panel-pad stack" onSubmit={handleSubmit} noValidate>
@@ -85,7 +88,7 @@ export default function Signup() {
 
         <div className="field">
           <label className="label" htmlFor="name">
-            Your name
+            {t('your_name')}
           </label>
           <input
             id="name"
@@ -101,7 +104,7 @@ export default function Signup() {
 
         <div className="field">
           <label className="label" htmlFor="email">
-            Email address
+            {t('email')}
           </label>
           <input
             id="email"
@@ -118,7 +121,7 @@ export default function Signup() {
 
         <div className="field">
           <label className="label" htmlFor="password">
-            Password
+            {t('password')}
           </label>
           <input
             id="password"
@@ -133,20 +136,17 @@ export default function Signup() {
           {fieldErrors['password'] ? (
             <span className="field-error">{fieldErrors['password']}</span>
           ) : (
-            <span className="field-hint">
-              At least 10 characters. Length matters far more than symbols — a short phrase you can
-              remember beats a scrambled word.
-            </span>
+            <span className="field-hint">{t('password_hint')}</span>
           )}
         </div>
 
         <fieldset className="field">
-          <legend className="label">Who will take these medicines?</legend>
+          <legend className="label">{t('who_takes_these')}</legend>
           <div className="row row-wrap" style={{ gap: 'var(--s2)' }}>
             {(
               [
-                ['self', 'Me'],
-                ['family', 'A parent or another adult I look after'],
+                ['self', 'setup_self'],
+                ['family', 'setup_family'],
               ] as const
             ).map(([value, label]) => (
               <button
@@ -156,11 +156,11 @@ export default function Signup() {
                 aria-pressed={setupFor === value}
                 onClick={() => setSetupFor(setupFor === value ? null : value)}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
-          <span className="field-hint">Optional. It helps us build for the people who use MedTrack.</span>
+          <span className="field-hint">{t('setup_hint')}</span>
         </fieldset>
 
         <label className="checkbox-row">
@@ -169,7 +169,7 @@ export default function Signup() {
             checked={confirmedAdult}
             onChange={(event) => setConfirmedAdult(event.target.checked)}
           />
-          <span className="t-sm">I am 18 or older.</span>
+          <span className="t-sm">{t('i_am_adult')}</span>
         </label>
 
         {/* Never pre-ticked. Consent that was assumed is not consent. */}
@@ -180,9 +180,18 @@ export default function Signup() {
             onChange={(event) => setAcceptedTerms(event.target.checked)}
           />
           <span className="t-sm">
-            I agree to the <Link to="/terms" target="_blank">Terms of Service</Link> and{' '}
-            <Link to="/privacy" target="_blank">Privacy Policy</Link>, including MedTrack storing
-            information about my medicines so it can remind me.
+            {interleave(t('agree_terms'), {
+              terms: (
+                <Link to="/terms" target="_blank">
+                  {t('terms_of_service')}
+                </Link>
+              ),
+              privacy: (
+                <Link to="/privacy" target="_blank">
+                  {t('privacy_policy')}
+                </Link>
+              ),
+            })}
           </span>
         </label>
 
@@ -193,17 +202,17 @@ export default function Signup() {
             onChange={(event) => setMarketingEmail(event.target.checked)}
           />
           <span className="t-sm muted">
-            Occasional email about new features. Entirely optional, and you can stop it any time.
+            {t('marketing_optin')}
           </span>
         </label>
 
         <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={busy}>
-          {busy ? 'Creating your account…' : 'Create account'}
+          {t(busy ? 'creating_account' : 'create_account_btn')}
         </button>
       </form>
 
       <p className="center muted t-sm mt-5">
-        Already have an account? <Link to="/login">Sign in</Link>
+        {interleave(t('have_account'), { link: <Link to="/login">{t('sign_in')}</Link> })}
       </p>
     </main>
   );

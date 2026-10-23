@@ -13,13 +13,14 @@ import { ApiError } from '../api/client.js';
 import { careApi, type CaregiverEntry } from '../api/endpoints.js';
 import { EmptyState, ErrorBanner, Modal, ScreenHeader, Spinner } from '../components/ui.js';
 import { Check, Plus, Users } from '../components/icons.js';
+import { useT } from '../i18n/index.js';
 
-const PERMISSIONS: { key: keyof CarePermissions; label: string; description: string }[] = [
-  { key: 'viewMedicines', label: 'See my medicines', description: 'Names, strengths and schedules.' },
-  { key: 'viewAdherence', label: 'See whether I took them', description: 'Daily history and trends.' },
-  { key: 'viewAppointments', label: 'See my appointments', description: 'Doctor visits and lab tests.' },
-  { key: 'receiveAlerts', label: 'Get alerts', description: 'Missed critical doses and SOS.' },
-  { key: 'manageAlerts', label: 'Resolve alerts', description: 'Mark an alert as handled.' },
+const PERMISSIONS: (keyof CarePermissions)[] = [
+  'viewMedicines',
+  'viewAdherence',
+  'viewAppointments',
+  'receiveAlerts',
+  'manageAlerts',
 ];
 
 const DEFAULT_PERMISSIONS: CarePermissions = {
@@ -31,6 +32,7 @@ const DEFAULT_PERMISSIONS: CarePermissions = {
 };
 
 export default function Caregivers() {
+  const { t } = useT();
   const [caregivers, setCaregivers] = useState<CaregiverEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,41 +44,39 @@ export default function Caregivers() {
       const { caregivers: list } = await careApi.caregivers();
       setCaregivers(list);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not load your caregivers.');
+      setError(caught instanceof ApiError ? caught.message : t('caregivers_load_failed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function revoke(caregiver: CaregiverEntry) {
-    const confirmed = window.confirm(
-      `Withdraw ${caregiver.email}'s access?\n\nThey immediately stop seeing your information and stop receiving alerts.`,
-    );
+    const confirmed = window.confirm(t('revoke_confirm', { email: caregiver.email }));
     if (!confirmed) return;
 
     try {
       await careApi.revoke(caregiver.id);
       await load();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not withdraw access.');
+      setError(caught instanceof ApiError ? caught.message : t('revoke_failed'));
     }
   }
 
-  if (loading) return <Spinner label="Loading caregivers" />;
+  if (loading) return <Spinner label={t('loading_caregivers')} />;
 
   return (
     <div>
       <ScreenHeader
-        eyebrow="People who can see what you share"
-        title="Caregivers"
+        eyebrow={t('caregivers_eyebrow')}
+        title={t('caregivers_title')}
         action={
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setInviteOpen(true)}>
             <Plus size={16} />
-            Invite
+            {t('invite')}
           </button>
         }
       />
@@ -86,11 +86,11 @@ export default function Caregivers() {
       {caregivers.length === 0 ? (
         <EmptyState
           icon={<Users size={22} />}
-          title="No caregivers yet"
-          description="Invite someone you trust. You choose exactly what they see, and you can withdraw it at any time without asking them."
+          title={t('caregivers_empty_title')}
+          description={t('caregivers_empty_body')}
           action={
             <button type="button" className="btn btn-primary" onClick={() => setInviteOpen(true)}>
-              Invite a caregiver
+              {t('invite_caregiver')}
             </button>
           }
         />
@@ -101,7 +101,7 @@ export default function Caregivers() {
               <div className="panel-head">
                 <span className="micro">{caregiver.relation}</span>
                 <span className={`badge ${caregiver.status === 'active' ? 'badge-ok' : 'badge-warn'}`}>
-                  {caregiver.status === 'active' ? 'Active' : 'Invited'}
+                  {t(caregiver.status === 'active' ? 'link_active' : 'link_invited')}
                 </span>
               </div>
 
@@ -111,10 +111,10 @@ export default function Caregivers() {
                 </p>
 
                 <ul className="stack stack-sm mt-3" style={{ listStyle: 'none', padding: 0 }}>
-                  {PERMISSIONS.filter((p) => caregiver.permissions[p.key]).map((p) => (
-                    <li key={p.key} className="row muted t-sm" style={{ gap: 'var(--s2)' }}>
+                  {PERMISSIONS.filter((key) => caregiver.permissions[key]).map((key) => (
+                    <li key={key} className="row muted t-sm" style={{ gap: 'var(--s2)' }}>
                       <Check size={15} />
-                      {p.label}
+                      {t(`perm_${key}`)}
                     </li>
                   ))}
                 </ul>
@@ -124,7 +124,7 @@ export default function Caregivers() {
                   className="btn btn-ghost btn-sm mt-4"
                   onClick={() => revoke(caregiver)}
                 >
-                  Withdraw access
+                  {t('withdraw_access')}
                 </button>
               </div>
             </article>
@@ -146,6 +146,7 @@ export default function Caregivers() {
 }
 
 function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [relation, setRelation] = useState('');
   const [permissions, setPermissions] = useState<CarePermissions>(DEFAULT_PERMISSIONS);
@@ -164,24 +165,22 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
       await careApi.invite({ email, relation, permissions });
       onDone();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not send that invitation.');
+      setError(caught instanceof ApiError ? caught.message : t('invite_failed'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title="Invite a caregiver" onClose={onClose}>
+    <Modal title={t('invite_caregiver')} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
         {error && <ErrorBanner message={error} />}
 
-        <p className="muted t-sm">
-          They get an email inviting them to accept. Nothing is shared until they do.
-        </p>
+        <p className="muted t-sm">{t('invite_note')}</p>
 
         <div className="field">
           <label className="label" htmlFor="email">
-            Their email address
+            {t('their_email')}
           </label>
           <input
             id="email"
@@ -195,31 +194,27 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 
         <div className="field">
           <label className="label" htmlFor="relation">
-            Who are they to you?
+            {t('who_to_you')}
           </label>
           <input
             id="relation"
             className="input"
             required
-            placeholder="e.g. Daughter, Spouse, Dr. Rao"
+            placeholder={t('relation_example')}
             value={relation}
             onChange={(event) => setRelation(event.target.value)}
           />
         </div>
 
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend className="label mb-3">What can they see?</legend>
-          {PERMISSIONS.map((permission) => (
-            <label key={permission.key} className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={permissions[permission.key]}
-                onChange={() => toggle(permission.key)}
-              />
+          <legend className="label mb-3">{t('what_can_see')}</legend>
+          {PERMISSIONS.map((key) => (
+            <label key={key} className="checkbox-row">
+              <input type="checkbox" checked={permissions[key]} onChange={() => toggle(key)} />
               <span>
-                <strong className="t-sm">{permission.label}</strong>
+                <strong className="t-sm">{t(`perm_${key}`)}</strong>
                 <span className="field-hint" style={{ display: 'block' }}>
-                  {permission.description}
+                  {t(`perm_${key}_d`)}
                 </span>
               </span>
             </label>
@@ -227,7 +222,7 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         </fieldset>
 
         <button className="action-primary" type="submit" disabled={busy}>
-          {busy ? 'Sending…' : 'Send invitation'}
+          {t(busy ? 'sending' : 'send_invitation')}
         </button>
       </form>
     </Modal>

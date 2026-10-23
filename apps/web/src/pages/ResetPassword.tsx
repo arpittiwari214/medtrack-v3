@@ -4,10 +4,12 @@ import { ApiError } from '../api/client.js';
 import { authApi } from '../api/endpoints.js';
 import { ErrorBanner } from '../components/ui.js';
 import { Pill } from '../components/icons.js';
+import { useT } from '../i18n/index.js';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useT();
   const token = searchParams.get('token') ?? '';
 
   const [password, setPassword] = useState('');
@@ -20,7 +22,7 @@ export default function ResetPassword() {
     setError('');
 
     if (password !== confirm) {
-      setError('Those two passwords do not match.');
+      setError(t('passwords_differ'));
       return;
     }
 
@@ -29,10 +31,10 @@ export default function ResetPassword() {
       await authApi.resetPassword({ token, password });
       navigate('/login', {
         replace: true,
-        state: { message: 'Your password has been reset. Please sign in.' },
+        state: { message: t('password_was_reset') },
       });
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Something went wrong. Try again.');
+      setError(caught instanceof ApiError ? caught.message : t('something_wrong'));
     } finally {
       setBusy(false);
     }
@@ -42,9 +44,9 @@ export default function ResetPassword() {
     return (
       <main id="main" className="auth-shell">
         <div className="panel panel-pad stack">
-          <ErrorBanner message="That reset link is incomplete. Please request a new one." />
+          <ErrorBanner message={t('reset_incomplete')} />
           <Link className="btn btn-primary btn-block" to="/forgot-password">
-            Request a new link
+            {t('request_new_link')}
           </Link>
         </div>
       </main>
@@ -54,11 +56,11 @@ export default function ResetPassword() {
   return (
     <main id="main" className="auth-shell">
       <div className="auth-head">
-        <Link to="/" className="brand-mark mb-4" aria-label="MedTrack home">
+        <Link to="/" className="brand-mark mb-4" aria-label={t('medtrack_home')}>
           <Pill size={20} />
           MedTrack
         </Link>
-        <h1 className="t-title">Choose a new password</h1>
+        <h1 className="t-title">{t('choose_new_password')}</h1>
       </div>
 
       <form className="panel panel-pad stack" onSubmit={handleSubmit}>
@@ -66,7 +68,7 @@ export default function ResetPassword() {
 
         <div className="field">
           <label className="label" htmlFor="password">
-            New password
+            {t('new_password')}
           </label>
           <input
             id="password"
@@ -77,12 +79,12 @@ export default function ResetPassword() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-          <span className="field-hint">At least 10 characters.</span>
+          <span className="field-hint">{t('password_min')}</span>
         </div>
 
         <div className="field">
           <label className="label" htmlFor="confirm">
-            Confirm new password
+            {t('confirm_new_password')}
           </label>
           <input
             id="confirm"
@@ -95,12 +97,10 @@ export default function ResetPassword() {
           />
         </div>
 
-        <p className="field-hint">
-          Resetting your password signs you out on every device, in case someone else had access.
-        </p>
+        <p className="field-hint">{t('reset_signs_out')}</p>
 
         <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Set new password'}
+          {t(busy ? 'saving' : 'set_new_password')}
         </button>
       </form>
     </main>
