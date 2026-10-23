@@ -1,0 +1,25 @@
+# The API image is built from the repository root (it needs packages/shared),
+# so without this the build context would include everything below.
+
+# Local MongoDB data — real records. Must never be in an image.
+.data/
+
+# Secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and build output are recreated inside the image
+**/node_modules/
+**/dist/
+**/*.tsbuildinfo
+
+# Not needed to build the API
+.git/
+apps/web/
+apps/mobile/
+research_notes/
+reports/
+docs/
+**/coverage/
+**/*.log

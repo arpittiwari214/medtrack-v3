@@ -173,21 +173,18 @@ this app uses it to mean "taken" versus "missed".
 
 ## Deployment
 
+**Step-by-step guide: [docs/DEPLOY.md](docs/DEPLOY.md)** — database on MongoDB Atlas (Mumbai), API on
+Fly.io (Mumbai), website on Vercel, phone app built with Expo EAS.
+
 The API needs a host that stays running. v3 was on a free tier that sleeps after 15 minutes idle, so
 its in-process scheduler died with the instance and reminders silently stopped — which is what took
-the service down.
+the service down. `apps/api/fly.toml` keeps exactly one machine always on.
 
-```bash
-docker build -f apps/api/Dockerfile -t medtrack-api .
-```
+Build the API image from the repository root, not from `apps/api` — it depends on the shared
+workspace. `.dockerignore` keeps the local database (`.data/`) and secrets out of the image.
 
-Build from the repository root, not from `apps/api` — the API depends on the shared workspace.
-
-Set every variable in `apps/api/.env.example`. In production the app refuses to start on a wildcard
-CORS origin or on identical access and refresh secrets.
-
-If running more than one instance, set `SCHEDULER_ENABLED=false` on all but one so background jobs
-run in exactly one place.
+In production the API refuses to start on a wildcard CORS origin or on identical access and refresh
+secrets. If running more than one instance, set `SCHEDULER_ENABLED=false` on all but one.
 
 ---
 
