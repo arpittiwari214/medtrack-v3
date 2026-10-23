@@ -27,6 +27,7 @@ import {
   isResolved,
   todayIn,
   type Appointment,
+  type CreateMedicineInput,
   type DoseAction,
   type DoseEvent,
   type Medicine,
@@ -34,9 +35,11 @@ import {
 } from '@medtrack/shared';
 import { api, setSessionEndedHandler } from '../api/client';
 import { clearTokens, getAccessToken, setTokens } from '../storage/secure';
+import { deleteAllPhotos, readPhotos, savePhoto } from '../storage/photos';
 import {
   actOnDoseLocally,
   clearAll,
+  createMedicineLocally,
   ensureLocalDoses,
   readCache,
   updateAppointmentLocally,
@@ -74,6 +77,10 @@ interface AppContextValue {
   refresh: () => Promise<void>;
   /** Re-run the reminder schedule, replacing everything when `force` is set. */
   rescheduleNow: (force?: boolean) => Promise<number>;
+  /** Add a medicine on this phone, optionally with a strip photo. Works offline. */
+  addMedicine: (input: CreateMedicineInput, pickedPhotoUri?: string | null) => Promise<Medicine>;
+  /** Strip photos stored on this phone, by medicine id. */
+  photos: Record<string, string>;
   /** Whether reminders on this phone can be trusted; null until first read. */
   health: ReminderHealth | null;
   refreshHealth: () => Promise<void>;
@@ -109,6 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
   const [health, setHealth] = useState<ReminderHealth | null>(null);
+  const [photos, setPhotos] = useState<Record<string, string>>({});
 
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const askedForPermission = useRef(false);
@@ -121,6 +129,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(null);
       void cancelAllDoseReminders();
       void clearAll();
+      void deleteAllPhotos();
+      setPhotos({});
     });
 
     void (async () => {
@@ -132,6 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Show cached data immediately, before any network call. On a cold start
       // with no signal the app is still fully usable.
       setCache(await withLocalDoses(deviceZone()));
+      setPhotos(await readPhotos());
 
       const token = await getAccessToken();
       if (!token) {
@@ -278,9 +289,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await cancelAllDoseReminders();
     await clearTokens();
     await clearAll();
+    // Strip photos are health data too; they leave with everything else.
+    await deleteAllPhotos();
     setUser(null);
     setCache(EMPTY_CACHE);
+    setPhotos({});
   }, []);
+
+  const addMedicine = useCallback(
+    async (input: CreateMedicineInput, pickedPhotoUri?: string | null) => {
+      if (!user) throw new Error('Please sign in first.');
+      const { medicine } = await createMedicineLocally(input, {
+        userId: user.id,
+        timezone: user.timezone,
+      });
+
+      if (pickedPhotoUri) {
+        await savePhoto(medicine.id, pickedPhotoUri);
+        setPhotos(await readPhotos());
+      }
+
+      // Generate today's doses for it at once, so it appears on Today and its
+      // reminders are scheduled before any sync happens.
+      setCache(await withLocalDoses(deviceZone()));
+      void runSync();
+      return medicine;
+    },
+    [user, runSync],
+  );
 
   const actOnDose = useCallback(
     async (doseId: string, action: DoseAction, snoozeMinutes?: number) => {
@@ -330,6 +366,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       rescheduleNow,
       health,
       refreshHealth,
+      addMedicine,
+      photos,
     }),
     [
       user,
@@ -345,6 +383,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       rescheduleNow,
       health,
       refreshHealth,
+      addMedicine,
+      photos,
     ],
   );
 

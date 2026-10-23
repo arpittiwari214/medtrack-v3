@@ -46,7 +46,15 @@
           "defaultChannel": "reminders"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "MedTrack uses the camera to take a photo of your medicine strip, so you can recognise it later. The photo stays on your phone.",
+          "photosPermission": "MedTrack lets you choose a photo of your medicine strip. The photo stays on your phone.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "apiUrl": "http://localhost:5000/api"

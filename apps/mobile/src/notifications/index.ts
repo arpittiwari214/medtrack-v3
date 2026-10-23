@@ -24,7 +24,13 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { formatTime12h, nextOccurrencesForAll, type Medicine, type PlannedDose } from '@medtrack/shared';
+import {
+  describeMedicine,
+  formatTime12h,
+  nextOccurrencesForAll,
+  type Medicine,
+  type PlannedDose,
+} from '@medtrack/shared';
 import { DOSE_ID_PREFIX, planReminders, type ScheduledReminder } from '../reminder-plan';
 
 /**
@@ -42,7 +48,7 @@ const MAX_SCHEDULED = Platform.OS === 'ios' ? 56 : 300;
 const HORIZON_DAYS = 14;
 
 /** Bump when reminder wording changes, so old text is replaced, not fired. */
-const CONTENT_VERSION = 2;
+const CONTENT_VERSION = 3;
 
 /**
  * Android channel for time-critical reminders.
@@ -175,6 +181,10 @@ export async function rescheduleReminders(
       fingerprint: item.content.data?.['fp'] as string | undefined,
     }));
 
+  const byId = new Map(medicines.map((medicine) => [medicine.id, medicine]));
+  const labelOf = (dose: PlannedDose) =>
+    describeMedicine(byId.get(dose.medicineId) ?? { name: dose.medicineName });
+
   const plan = planReminders({
     // Over-fetch by the resolved count so taken doses do not eat the cap.
     planned: nextOccurrencesForAll(medicines, MAX_SCHEDULED + resolved.size),
@@ -185,6 +195,7 @@ export async function rescheduleReminders(
     max: MAX_SCHEDULED,
     contentVersion: CONTENT_VERSION,
     force: options.force ?? false,
+    labelOf,
   });
 
   for (const identifier of plan.toCancel) {
@@ -196,7 +207,7 @@ export async function rescheduleReminders(
     try {
       await Notifications.scheduleNotificationAsync({
         identifier: reminder.identifier,
-        content: buildContent(reminder.dose, reminder.fingerprint),
+        content: buildContent(reminder.dose, reminder.fingerprint, labelOf(reminder.dose)),
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: new Date(reminder.dose.scheduledAt),
@@ -212,12 +223,23 @@ export async function rescheduleReminders(
   return plan.kept + added;
 }
 
-function buildContent(dose: PlannedDose, fingerprint: string): Notifications.NotificationContentInput {
+/**
+ * Reminder wording leads with what the patient will see on the strip — "White
+ * tablet for sugar" — because most patients recognise a medicine by its colour
+ * rather than its name, and the lock screen is where the reminder is read.
+ */
+function buildContent(
+  dose: PlannedDose,
+  fingerprint: string,
+  label: string,
+): Notifications.NotificationContentInput {
+  const name = [dose.medicineName, dose.medicineStrength].filter(Boolean).join(' ');
+  const due = `due at ${formatTime12h(dose.localTime)}`;
+  const recognisable = label !== dose.medicineName;
+
   return {
-    title: dose.isCritical ? `Time for ${dose.medicineName}` : 'Time to take your medicine',
-    body: dose.isCritical
-      ? `${dose.medicineStrength} — this one matters. Due at ${formatTime12h(dose.localTime)}.`
-      : `${dose.medicineName} ${dose.medicineStrength} — due at ${formatTime12h(dose.localTime)}.`,
+    title: recognisable ? label : 'Time to take your medicine',
+    body: dose.isCritical ? `${name} — ${due}. This one matters.` : `${name} — ${due}.`,
     sound: true,
     priority: Notifications.AndroidNotificationPriority.MAX,
     // Carried back when the user taps, so the app can act on the exact dose,

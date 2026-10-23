@@ -13,12 +13,20 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
+  describeMedicine,
+  dosesRemainingInStock,
+  formatLocalDate,
   formatTime12h,
+  isLowStock,
+  projectedRunOutDate,
   splitToday,
   summarise,
   todayIn,
+  type Appointment,
   type DoseEvent,
+  type Medicine,
 } from '@medtrack/shared';
+import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { SNOOZE_OPTIONS } from '../config';
 import { MIN_TOUCH, TABULAR, radius, spacing, type, useTheme } from '../theme';
@@ -37,8 +45,9 @@ import {
   SectionHead,
   sharedStyles,
 } from '../components/ui';
-import { AlertTriangle, Check, Clock, Pill, SkipForward } from '../components/icons';
+import { AlertTriangle, Calendar, Check, Clock, Package, Pill, SkipForward } from '../components/icons';
 import { ReminderAlertBanner } from '../components/ReminderHealth';
+import { ColorDot, MedicinePhoto } from '../components/recognition';
 
 function deviceZone(): string {
   try {
@@ -50,7 +59,12 @@ function deviceZone(): string {
 
 export default function TodayScreen() {
   const c = useTheme();
-  const { user, cache, syncing, refresh, actOnDose } = useApp();
+  const { user, cache, syncing, refresh, actOnDose, photos } = useApp();
+
+  const medicinesById = useMemo(
+    () => new Map((cache.medicines as Medicine[]).map((medicine) => [medicine.id, medicine])),
+    [cache.medicines],
+  );
   const [snoozeTarget, setSnoozeTarget] = useState<DoseEvent | null>(null);
 
   const zone = user?.timezone ?? deviceZone();
@@ -127,11 +141,13 @@ export default function TodayScreen() {
             <EmptyState
               icon={(colour) => <Pill size={22} color={colour} />}
               title="Nothing scheduled today"
-              description="Add a medicine on the web app and your daily schedule builds itself."
+              description="Open Medicines and tap Add — a photo of the strip is enough."
             />
           ) : focus ? (
             <NextDose
               dose={focus}
+              medicine={medicinesById.get(focus.medicineId)}
+              photo={photos[focus.medicineId]}
               onTake={() => void actOnDose(focus.id, 'take')}
               onSnooze={() => setSnoozeTarget(focus)}
               onSkip={() => void actOnDose(focus.id, 'skip')}
@@ -143,6 +159,8 @@ export default function TodayScreen() {
               description={`${taken.length} of ${total} doses taken.`}
             />
           )}
+
+          <CarePanel medicines={[...medicinesById.values()]} appointments={cache.appointments} />
 
           {total > 0 && (
             <>
@@ -171,6 +189,8 @@ export default function TodayScreen() {
                     time={formatTime12h(dose.localTime)}
                     name={dose.medicineName}
                     strength={dose.medicineStrength}
+                    purpose={medicinesById.get(dose.medicineId)?.purpose}
+                    leading={<ColorDot color={medicinesById.get(dose.medicineId)?.pillColor} />}
                     status={dose.status}
                     critical={dose.isCritical}
                     first={index === 0}
@@ -258,22 +278,30 @@ export default function TodayScreen() {
 
 function NextDose({
   dose,
+  medicine,
+  photo,
   onTake,
   onSnooze,
   onSkip,
 }: {
   dose: DoseEvent;
+  medicine: Medicine | undefined;
+  photo: string | undefined;
   onTake: () => void;
   onSnooze: () => void;
   onSkip: () => void;
 }) {
   const c = useTheme();
   const overdue = dose.status === 'missed';
+  // A scheduled dose already past its time is not "next" — it is due now.
+  const pastDue = !overdue && new Date(dose.scheduledAt).getTime() < Date.now();
+  const headline = medicine ? describeMedicine(medicine) : dose.medicineName;
+  const showName = headline !== dose.medicineName;
 
   return (
     <Panel critical={dose.isCritical}>
       <PanelHead
-        label={overdue ? 'Overdue' : 'Next dose'}
+        label={overdue ? 'Overdue' : pastDue ? 'Due now' : 'Next dose'}
         aside={
           <Text style={[type.xs, TABULAR, { color: c.text2, fontWeight: '600' }]}>
             {relativeTo(dose.scheduledAt)}
@@ -282,13 +310,21 @@ function NextDose({
       />
 
       <PanelBody style={{ paddingVertical: spacing.xl }}>
-        <Text style={{ fontSize: 28, fontWeight: '700', letterSpacing: -0.8, color: c.text }}>
-          {dose.medicineName}
-        </Text>
-        <Text style={[type.sm, TABULAR, { color: c.text2, marginTop: 4 }]}>
-          {dose.medicineStrength} · {formatTime12h(dose.localTime)}
-          {dose.isCritical ? ' · Critical' : ''}
-        </Text>
+        {/* What the patient sees on the strip leads; the name supports it. */}
+        <View style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'center' }}>
+          <MedicinePhoto uri={photo} color={medicine?.pillColor} size={88} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, fontWeight: '700', letterSpacing: -0.6, color: c.text }}>
+              {headline}
+            </Text>
+            <Text style={[type.sm, TABULAR, { color: c.text2, marginTop: 4 }]}>
+              {[showName ? dose.medicineName : null, dose.medicineStrength || null, formatTime12h(dose.localTime)]
+                .filter(Boolean)
+                .join(' · ')}
+              {dose.isCritical ? ' · Important' : ''}
+            </Text>
+          </View>
+        </View>
 
         {overdue && (
           <View style={{ marginTop: spacing.lg }}>
@@ -327,6 +363,102 @@ function NextDose({
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
+
+/* ── Supply and visits ───────────────────────────────────────────────────── */
+
+/**
+ * In India the bigger failure is falling out of care — running out and not
+ * refilling, or never going back to the doctor — rather than one missed dose.
+ * 43% of patients in one national programme never returned for a first
+ * follow-up. So both sit on Today, computed from offline data.
+ */
+function CarePanel({ medicines, appointments }: { medicines: Medicine[]; appointments: Appointment[] }) {
+  const c = useTheme();
+  const navigation = useNavigation<{ navigate: (screen: string) => void }>();
+
+  const running = medicines
+    .filter((medicine) => !medicine.archivedAt && isLowStock(medicine))
+    .map((medicine) => ({ medicine, runOut: projectedRunOutDate(medicine) }))
+    .sort((a, b) => (a.runOut ?? '9999').localeCompare(b.runOut ?? '9999'))
+    .slice(0, 3);
+
+  const now = Date.now();
+  const nextVisit = [...appointments]
+    .filter((a) => a.status === 'scheduled' && new Date(a.scheduledAt).getTime() >= now)
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))[0];
+
+  if (running.length === 0 && medicines.length === 0) return null;
+
+  return (
+    <Panel>
+      <PanelHead label="Supply and visits" />
+      <View>
+        {running.map(({ medicine, runOut }) => {
+          const left = dosesRemainingInStock(medicine) ?? 0;
+          return (
+            <Pressable
+              key={medicine.id}
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('Medicines')}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.md,
+                minHeight: 60,
+                paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.md,
+                borderBottomWidth: 1,
+                borderBottomColor: c.border,
+                backgroundColor: pressed ? c.surface2 : 'transparent',
+              })}
+            >
+              <Package size={18} color={c.warnInk} />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <ColorDot color={medicine.pillColor} />
+                  <Text style={[type.base, { color: c.text, fontWeight: '600' }]} numberOfLines={1}>
+                    {medicine.name}
+                  </Text>
+                </View>
+                <Text style={[type.xs, { color: c.text2, marginTop: 2 }]}>
+                  {left} {left === 1 ? 'dose' : 'doses'} left
+                  {runOut ? ` · runs out around ${formatLocalDate(runOut)}` : ''}
+                </Text>
+              </View>
+              <Text style={[type.micro, { color: c.warnInk, textTransform: 'uppercase' }]}>Buy more</Text>
+            </Pressable>
+          );
+        })}
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('Visits')}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+            minHeight: 60,
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.md,
+            backgroundColor: pressed ? c.surface2 : 'transparent',
+          })}
+        >
+          <Calendar size={18} color={c.text2} />
+          <View style={{ flex: 1 }}>
+            <Text style={[type.base, { color: c.text, fontWeight: '600' }]} numberOfLines={1}>
+              {nextVisit ? nextVisit.title : 'No visit booked'}
+            </Text>
+            <Text style={[type.xs, TABULAR, { color: c.text2, marginTop: 2 }]}>
+              {nextVisit
+                ? `${formatLocalDate(nextVisit.localDate)} · ${formatTime12h(nextVisit.localTime)}${nextVisit.requiresFasting ? ' · fasting' : ''}`
+                : 'Add your next check-up and we will remind you the day before.'}
+            </Text>
+          </View>
+        </Pressable>
+      </View>
+    </Panel>
+  );
+}
 
 function greeting(): string {
   const hour = new Date().getHours();

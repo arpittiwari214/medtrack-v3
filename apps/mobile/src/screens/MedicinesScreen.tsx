@@ -1,24 +1,18 @@
-import { useMemo } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
   dosesRemainingInStock,
   formatTime12h,
   isLowStock,
+  slotNotation,
   type Medicine,
 } from '@medtrack/shared';
 import { useApp } from '../context/AppContext';
-import { TABULAR, radius, spacing, type, useTheme } from '../theme';
-import {
-  Badge,
-  Banner,
-  EmptyState,
-  Panel,
-  PanelBody,
-  PanelHead,
-  ScreenHeader,
-  sharedStyles,
-} from '../components/ui';
+import { MIN_TOUCH, TABULAR, radius, spacing, type, useTheme } from '../theme';
+import { Badge, Banner, EmptyState, Panel, PanelBody, PanelHead, ScreenHeader, sharedStyles } from '../components/ui';
+import { ColorDot, MedicinePhoto } from '../components/recognition';
 import { Package, Pill } from '../components/icons';
+import AddMedicineScreen from './AddMedicineScreen';
 
 const SCHEDULE_LABEL: Record<string, string> = {
   daily: 'Every day',
@@ -30,104 +24,122 @@ const SCHEDULE_LABEL: Record<string, string> = {
 
 export default function MedicinesScreen() {
   const c = useTheme();
-  const { cache, syncing, refresh } = useApp();
+  const { cache, syncing, refresh, photos } = useApp();
+  const [adding, setAdding] = useState(false);
 
   const active = useMemo(
     () => (cache.medicines as Medicine[]).filter((medicine) => !medicine.archivedAt),
     [cache.medicines],
   );
 
-  return (
-    <ScrollView
-      style={[sharedStyles.screen, { backgroundColor: c.bg }]}
-      contentContainerStyle={sharedStyles.content}
-      refreshControl={
-        <RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={c.brand} />
-      }
+  const addButton = (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => setAdding(true)}
+      style={({ pressed }) => ({
+        minHeight: MIN_TOUCH,
+        paddingHorizontal: spacing.lg,
+        justifyContent: 'center',
+        borderRadius: radius.sm,
+        backgroundColor: c.brandStrong,
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
-      <ScreenHeader
-        eyebrow={active.length > 0 ? `${active.length} active` : undefined}
-        title="Medicines"
-      />
+      <Text style={[type.sm, { color: c.onBrand, fontWeight: '700' }]}>Add</Text>
+    </Pressable>
+  );
 
-      {active.length === 0 ? (
-        <EmptyState
-          icon={(colour) => <Pill size={22} color={colour} />}
-          title="No medicines yet"
-          description="Add your medicines on the web app and they sync here."
+  return (
+    <>
+      <ScrollView
+        style={[sharedStyles.screen, { backgroundColor: c.bg }]}
+        contentContainerStyle={sharedStyles.content}
+        refreshControl={<RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={c.brand} />}
+      >
+        <ScreenHeader
+          eyebrow={active.length > 0 ? `${active.length} active` : undefined}
+          title="Medicines"
+          action={addButton}
         />
-      ) : (
-        <View style={sharedStyles.stack}>
-          {active.map((medicine) => {
-            const remaining = dosesRemainingInStock(medicine);
-            const low = isLowStock(medicine);
 
-            return (
-              <Panel key={medicine.id} critical={medicine.isCritical}>
-                <PanelHead
-                  label={SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind}
-                  aside={medicine.isCritical ? <Badge label="Critical" tone="danger" /> : undefined}
-                />
+        {active.length === 0 ? (
+          <EmptyState
+            icon={(colour) => <Pill size={22} color={colour} />}
+            title="No medicines yet"
+            description="Tap Add and photograph the strip. You do not need to type the name."
+          />
+        ) : (
+          <View style={sharedStyles.stack}>
+            {active.map((medicine) => {
+              const remaining = dosesRemainingInStock(medicine);
+              const low = isLowStock(medicine);
 
-                <PanelBody>
-                  <Text style={[type.lg, { color: c.text }]} numberOfLines={1}>
-                    {medicine.name}
-                  </Text>
-                  <Text style={[type.xs, { color: c.text3, marginTop: 2 }]}>
-                    {medicine.strength}
-                  </Text>
+              return (
+                <Panel key={medicine.id} critical={medicine.isCritical}>
+                  <PanelHead
+                    label={`${SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind} · ${slotNotation(medicine.schedule.times)}`}
+                    aside={medicine.isCritical ? <Badge label="Important" tone="danger" /> : undefined}
+                  />
 
-                  {medicine.schedule.times.length > 0 && (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
-                        gap: spacing.sm,
-                        marginTop: spacing.md,
-                      }}
-                    >
-                      {medicine.schedule.times.map((time) => (
-                        <View
-                          key={time}
-                          style={{
-                            backgroundColor: c.surface2,
-                            borderRadius: radius.xs,
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                          }}
-                        >
-                          <Text style={[type.micro, TABULAR, { color: c.text2 }]}>
-                            {formatTime12h(time)}
+                  <PanelBody>
+                    {/* The photo is larger than the name: it is what the
+                        patient actually recognises. */}
+                    <View style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'center' }}>
+                      <MedicinePhoto uri={photos[medicine.id]} color={medicine.pillColor} size={84} />
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                          <ColorDot color={medicine.pillColor} size={14} />
+                          <ColorDot color={medicine.stripColor} size={14} />
+                          <Text style={[type.lg, { color: c.text, flexShrink: 1 }]} numberOfLines={2}>
+                            {medicine.name}
                           </Text>
                         </View>
-                      ))}
+                        <Text style={[type.sm, { color: c.text2 }]}>
+                          {[medicine.strength, medicine.purpose && `for ${medicine.purpose}`]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                      </View>
                     </View>
-                  )}
 
-                  {medicine.instructions ? (
-                    <Text style={[type.xs, { color: c.text3, marginTop: spacing.md }]}>
-                      {medicine.instructions}
-                    </Text>
-                  ) : null}
+                    {medicine.schedule.times.length > 0 && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md }}>
+                        {medicine.schedule.times.map((time) => (
+                          <View
+                            key={time}
+                            style={{ backgroundColor: c.surface2, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}
+                          >
+                            <Text style={[type.xs, TABULAR, { color: c.text2, fontWeight: '600' }]}>
+                              {formatTime12h(time)}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
 
-                  {/* Supply is shown in doses, not units — "6 doses left" is
-                      actionable; "12 tablets" needs mental arithmetic. */}
-                  {remaining !== null && (
-                    <View style={{ marginTop: spacing.md }}>
-                      <Banner
-                        tone={low ? 'warn' : 'neutral'}
-                        icon={<Package size={16} color={low ? c.warnInk : c.text2} />}
-                      >
-                        {`${remaining} ${remaining === 1 ? 'dose' : 'doses'} left${low ? ' — time to reorder' : ''}`}
-                      </Banner>
-                    </View>
-                  )}
-                </PanelBody>
-              </Panel>
-            );
-          })}
-        </View>
-      )}
-    </ScrollView>
+                    {/* Supply in doses, not units — "6 doses left" is actionable;
+                        "12 tablets" needs arithmetic. */}
+                    {remaining !== null && (
+                      <View style={{ marginTop: spacing.md }}>
+                        <Banner
+                          tone={low ? 'warn' : 'neutral'}
+                          icon={<Package size={16} color={low ? c.warnInk : c.text2} />}
+                        >
+                          {`${remaining} ${remaining === 1 ? 'dose' : 'doses'} left${low ? ' — time to buy more' : ''}`}
+                        </Banner>
+                      </View>
+                    )}
+                  </PanelBody>
+                </Panel>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+
+      <Modal visible={adding} animationType="slide" onRequestClose={() => setAdding(false)}>
+        <AddMedicineScreen onDone={() => setAdding(false)} />
+      </Modal>
+    </>
   );
 }

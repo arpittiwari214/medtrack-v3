@@ -36,6 +36,12 @@ export interface PlanInput {
   contentVersion: number;
   /** Replace everything regardless of fingerprint. */
   force: boolean;
+  /**
+   * The recognisable description shown on the reminder ("White tablet for
+   * sugar"). Part of the fingerprint, so changing a colour or purpose replaces
+   * the reminder instead of leaving the old wording to fire.
+   */
+  labelOf?: (dose: PlannedDose) => string;
 }
 
 export interface Plan {
@@ -45,9 +51,10 @@ export interface Plan {
   kept: number;
 }
 
-export function fingerprintOf(dose: PlannedDose, contentVersion: number): string {
+export function fingerprintOf(dose: PlannedDose, contentVersion: number, label = ''): string {
   return [
     contentVersion,
+    label,
     dose.scheduledAt,
     dose.medicineName,
     dose.medicineStrength,
@@ -81,7 +88,7 @@ export function planReminders(input: PlanInput): Plan {
     const identifier = DOSE_ID_PREFIX + dose.id;
     desired.set(identifier, {
       identifier,
-      fingerprint: fingerprintOf(dose, input.contentVersion),
+      fingerprint: fingerprintOf(dose, input.contentVersion, input.labelOf?.(dose) ?? ''),
       dose,
     });
   }

@@ -365,6 +365,8 @@ export function RailRow({
   name,
   strength,
   status,
+  purpose,
+  leading,
   critical = false,
   first = false,
   last = false,
@@ -374,6 +376,10 @@ export function RailRow({
   name: string;
   strength: string;
   status: DoseStatus;
+  /** The patient's own word for what it is for. */
+  purpose?: string | null;
+  /** Shown before the name — the medicine's colour dot. */
+  leading?: ReactNode;
   critical?: boolean;
   first?: boolean;
   last?: boolean;
@@ -457,8 +463,10 @@ export function RailRow({
       </View>
 
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <Text style={[type.sm, { color: c.text, fontWeight: '600' }]} numberOfLines={1}>
+        {leading}
+        <Text style={[type.sm, { color: c.text, fontWeight: '600', flexShrink: 1 }]} numberOfLines={1}>
           {name} <Text style={{ color: c.text3, fontWeight: '400' }}>{strength}</Text>
+          {purpose ? <Text style={{ color: c.text2, fontWeight: '400' }}> · {purpose}</Text> : null}
         </Text>
         {critical ? (
           <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.danger }} />

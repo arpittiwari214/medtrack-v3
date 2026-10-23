@@ -25,6 +25,7 @@ import {
   expandMedicines,
   mergeDoseConflict,
   plannedDoseFor,
+  type CreateMedicineInput,
   type DoseAction,
   type DoseEvent,
   type Medicine,
@@ -244,6 +245,58 @@ export async function ensureLocalDoses(from: string, to: string): Promise<Cached
   const next: CachedData = { ...cache, doses: [...cache.doses, ...missing] };
   await writeCache(next);
   return next;
+}
+
+/**
+ * Add a medicine on the phone, with or without signal.
+ *
+ * It appears immediately and its reminders are scheduled from local data; the
+ * create is queued and the server validates it exactly as it validates the web
+ * form. Ids are client-generated, so nothing waits on a round trip.
+ */
+export async function createMedicineLocally(
+  input: CreateMedicineInput,
+  owner: { userId: string; timezone: string },
+): Promise<{ cache: CachedData; medicine: Medicine }> {
+  const cache = await readCache();
+  const now = new Date().toISOString();
+  const id = input.id ?? randomId();
+
+  const medicine: Medicine = {
+    id,
+    userId: owner.userId,
+    name: input.name,
+    strength: input.strength,
+    form: input.form,
+    schedule: input.schedule as Medicine['schedule'],
+    timezone: owner.timezone,
+    instructions: input.instructions ?? '',
+    prescribedBy: input.prescribedBy ?? null,
+    isCritical: input.isCritical,
+    pillColor: input.pillColor ?? null,
+    stripColor: input.stripColor ?? null,
+    purpose: input.purpose ?? null,
+    stock: input.stock ? { ...input.stock, lastRefillAt: null, lastRefillUnits: null } : null,
+    missedAfterMinutes: input.missedAfterMinutes ?? null,
+    archivedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    rev: 1,
+  };
+
+  const next: CachedData = { ...cache, medicines: [...cache.medicines, medicine] };
+  await writeCache(next);
+
+  await enqueue({
+    mutationId: randomId(),
+    entity: 'medicine',
+    operation: 'create',
+    entityId: id,
+    clientUpdatedAt: now,
+    payload: { ...input, id } as Record<string, unknown>,
+  });
+
+  return { cache: next, medicine };
 }
 
 /**

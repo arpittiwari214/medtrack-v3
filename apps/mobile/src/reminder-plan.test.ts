@@ -99,3 +99,17 @@ test('never schedules into the past or beyond the horizon', () => {
   const plan = planReminders(input({ planned: [dose('past', -1), dose('soon', 1), dose('far', 24 * 20)] }));
   assert.deepEqual(plan.toSchedule.map((r) => r.dose.id), ['soon']);
 });
+
+test('changing how a medicine looks replaces its reminder', () => {
+  const a = dose('a', 2);
+  const before = fingerprintOf(a, 2, 'White tablet for sugar');
+  const plan = planReminders(
+    input({
+      planned: [a],
+      labelOf: () => 'Yellow tablet for sugar',
+      existing: [{ identifier: DOSE_ID_PREFIX + 'a', fingerprint: before }],
+    }),
+  );
+  assert.deepEqual(plan.toCancel, [DOSE_ID_PREFIX + 'a']);
+  assert.equal(plan.toSchedule.length, 1);
+});
