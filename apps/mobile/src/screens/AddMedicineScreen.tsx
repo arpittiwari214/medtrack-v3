@@ -29,6 +29,7 @@ import { useApp } from '../context/AppContext';
 import { MIN_TOUCH, radius, spacing, type, useTheme } from '../theme';
 import { ActionPrimary, ActionSecondary, Banner, Panel, PanelBody, PanelHead } from '../components/ui';
 import { ColorSwatches, MedicinePhoto, SlotPicker } from '../components/recognition';
+import { VoiceRecorder } from '../components/voice';
 import { AlertTriangle } from '../components/icons';
 
 function deviceZone(): string {
@@ -55,6 +56,7 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
   const { addMedicine, user } = useApp();
 
   const [photo, setPhoto] = useState<string | null>(null);
+  const [voice, setVoice] = useState<string | null>(null);
   const [pillColor, setPillColor] = useState<MedicineColor | null>(null);
   const [stripColor, setStripColor] = useState<MedicineColor | null>(null);
   const [purpose, setPurpose] = useState('');
@@ -125,7 +127,7 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
 
     setBusy(true);
     try {
-      await addMedicine(parsed.data, photo);
+      await addMedicine(parsed.data, { photo, voice });
       onDone();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save this medicine.');
@@ -182,6 +184,17 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
             <Text style={[type.xs, { color: c.text3, lineHeight: 18 }]}>
               The photo stays on this phone. It helps you tell look-alike medicines apart.
             </Text>
+          </PanelBody>
+        </Panel>
+
+        <Panel>
+          <PanelHead label="Voice note (optional)" />
+          <PanelBody style={{ gap: spacing.md }}>
+            <Text style={[type.sm, { color: c.text2, lineHeight: 20 }]}>
+              Say what it is in your own words — for example, “the white one for BP, after breakfast”.
+              It plays when you tap the speaker. Family can record it for you.
+            </Text>
+            <VoiceRecorder value={voice} onChange={setVoice} />
           </PanelBody>
         </Panel>
 

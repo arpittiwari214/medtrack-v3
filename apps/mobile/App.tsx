@@ -77,7 +77,7 @@ function Tabs() {
 
 function Root() {
   const c = useTheme();
-  const { user, loading, actOnDose } = useApp();
+  const { user, loading, actOnDose, setAnnounceDoseId } = useApp();
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   /**
@@ -101,7 +101,9 @@ function Root() {
       const ignoreDuplicate = () => undefined;
       if (action === 'TAKEN') actOnDose(doseId, 'take').catch(ignoreDuplicate);
       else if (action === 'SNOOZE') actOnDose(doseId, 'snooze', 10).catch(ignoreDuplicate);
-      // A plain tap just opens the app on Today, where the dose is listed.
+      // A plain tap opens Today, where the dose is listed — and is read aloud
+      // there if the patient turned that on.
+      else setAnnounceDoseId(doseId);
     });
 
     // A reminder arriving while the app is open is a delivery sample too.
@@ -113,7 +115,7 @@ function Root() {
       responseListener.current?.remove();
       received.remove();
     };
-  }, [actOnDose]);
+  }, [actOnDose, setAnnounceDoseId]);
 
   if (loading) {
     return (

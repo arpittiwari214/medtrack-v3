@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, ScrollView, Switch, Text, View } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { readOutbox } from '../storage/offline';
 import { spacing, type, useTheme } from '../theme';
@@ -16,7 +16,7 @@ import { ReminderHealthPanel } from '../components/ReminderHealth';
 
 export default function SettingsScreen() {
   const c = useTheme();
-  const { user, cache, signOut, refresh, syncing } = useApp();
+  const { user, cache, signOut, refresh, syncing, prefs, updatePrefs } = useApp();
 
   const [queued, setQueued] = useState(0);
 
@@ -57,6 +57,27 @@ export default function SettingsScreen() {
         </Panel>
 
         <ReminderHealthPanel />
+
+        <Panel>
+          <PanelHead label="Voice" />
+          <PanelBody>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[type.base, { color: c.text, fontWeight: '600' }]}>
+                  Read reminders aloud when I open them
+                </Text>
+                <Text style={[type.xs, { color: c.text2, marginTop: 2, lineHeight: 18 }]}>
+                  Plays your voice note, or reads the medicine out. Others nearby will hear what it is for.
+                </Text>
+              </View>
+              <Switch
+                value={prefs.speakOnOpen}
+                onValueChange={(value) => void updatePrefs({ speakOnOpen: value })}
+                accessibilityLabel="Read reminders aloud when I open them"
+              />
+            </View>
+          </PanelBody>
+        </Panel>
 
         <Panel>
           <PanelHead label="Sync" />

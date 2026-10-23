@@ -68,6 +68,14 @@ export const Undo = (p: IconProps) => (
   </Base>
 );
 
+export const Volume = (p: IconProps) => (
+  <Base {...p}>
+    <Path d="M11 5 6 9H2v6h4l5 4V5Z" />
+    <Path d="M15.5 8.5a5 5 0 0 1 0 7" />
+    <Path d="M19 5a10 10 0 0 1 0 14" />
+  </Base>
+);
+
 export const ChevronRight = (p: IconProps) => (
   <Base {...p}>
     <Path d="m9 6 6 6-6 6" />

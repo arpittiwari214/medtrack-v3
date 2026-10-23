@@ -54,7 +54,8 @@
           "photosPermission": "MedTrack lets you choose a photo of your medicine strip. The photo stays on your phone.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "extra": {
       "apiUrl": "http://localhost:5000/api"

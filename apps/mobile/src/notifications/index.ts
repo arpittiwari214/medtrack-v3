@@ -32,17 +32,18 @@ import {
   type PlannedDose,
 } from '@medtrack/shared';
 import { DOSE_ID_PREFIX, planReminders, type ScheduledReminder } from '../reminder-plan';
+import { planCareNudges } from '../care-nudges';
 
 /**
  * How many dose reminders to hand the OS at once.
  *
  * iOS silently drops anything past 64 pending per app, so it stays under that
- * with room for snoozes. Android documents no cap — about 500 per app is
+ * with room for snoozes and care nudges. Android documents no cap — about 500 per app is
  * observed via `dumpsys alarm`, varying by OEM — and the previous value of 50
  * was the iOS figure applied to both. At five medicines three times a day that
  * was about three days of reminders.
  */
-const MAX_SCHEDULED = Platform.OS === 'ios' ? 56 : 300;
+const MAX_SCHEDULED = Platform.OS === 'ios' ? 52 : 300;
 
 /** Never schedule further ahead than this. Topped up on every data change. */
 const HORIZON_DAYS = 14;
@@ -65,6 +66,7 @@ const DOSE_CATEGORY = 'dose-reminder';
 /** Data tags, so a reschedule only ever touches its own notifications. */
 const DOSE_TAG = 'dose-reminder';
 const SNOOZE_TAG = 'dose-snooze';
+const CARE_TAG = 'care-nudge';
 const SNOOZE_ID_PREFIX = 'snooze:';
 
 Notifications.setNotificationHandler({
@@ -262,7 +264,7 @@ export async function cancelAllDoseReminders(): Promise<void> {
     pending
       .filter((item) => {
         const tag = item.content.data?.['tag'];
-        return tag === DOSE_TAG || tag === SNOOZE_TAG;
+        return tag === DOSE_TAG || tag === SNOOZE_TAG || tag === CARE_TAG;
       })
       .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)),
   );
@@ -336,6 +338,34 @@ export async function cancelSnooze(doseId: string): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(SNOOZE_ID_PREFIX + doseId).catch(
     () => undefined,
   );
+}
+
+/**
+ * Replace the buy-more and check-in nudges (see care-nudges.ts). At most four,
+ * so a plain cancel-and-recreate is fine here.
+ */
+export async function scheduleCareNudges(medicines: Medicine[], timezone: string): Promise<void> {
+  const permission = await Notifications.getPermissionsAsync();
+  if (!permission.granted) return;
+
+  const pending = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    pending
+      .filter((item) => item.content.data?.['tag'] === CARE_TAG)
+      .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)),
+  );
+
+  for (const nudge of planCareNudges(medicines, timezone, new Date())) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: nudge.identifier,
+      content: { title: nudge.title, body: nudge.body, sound: true, data: { tag: CARE_TAG } },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: nudge.fireAt,
+        channelId: REMINDER_CHANNEL,
+      },
+    }).catch(() => undefined);
+  }
 }
 
 /** Clear the app icon badge, e.g. once the user has seen today's list. */

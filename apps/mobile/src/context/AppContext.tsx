@@ -35,7 +35,8 @@ import {
 } from '@medtrack/shared';
 import { api, setSessionEndedHandler } from '../api/client';
 import { clearTokens, getAccessToken, setTokens } from '../storage/secure';
-import { deleteAllPhotos, readPhotos, savePhoto } from '../storage/photos';
+import { deleteAllMedia, photoStore, voiceStore } from '../storage/media';
+import { readPrefs, writePrefs, type Prefs } from '../storage/prefs';
 import {
   actOnDoseLocally,
   clearAll,
@@ -54,6 +55,7 @@ import {
   registerNotificationActions,
   requestPermission,
   rescheduleReminders,
+  scheduleCareNudges,
   scheduleSnooze,
 } from '../notifications/index';
 import {
@@ -78,7 +80,17 @@ interface AppContextValue {
   /** Re-run the reminder schedule, replacing everything when `force` is set. */
   rescheduleNow: (force?: boolean) => Promise<number>;
   /** Add a medicine on this phone, optionally with a strip photo. Works offline. */
-  addMedicine: (input: CreateMedicineInput, pickedPhotoUri?: string | null) => Promise<Medicine>;
+  addMedicine: (
+    input: CreateMedicineInput,
+    media?: { photo?: string | null; voice?: string | null },
+  ) => Promise<Medicine>;
+  /** Voice labels recorded on this phone, by medicine id. */
+  voices: Record<string, string>;
+  prefs: Prefs;
+  updatePrefs: (patch: Partial<Prefs>) => Promise<void>;
+  /** A dose the patient opened from a reminder, to be read aloud once. */
+  announceDoseId: string | null;
+  setAnnounceDoseId: (doseId: string | null) => void;
   /** Strip photos stored on this phone, by medicine id. */
   photos: Record<string, string>;
   /** Whether reminders on this phone can be trusted; null until first read. */
@@ -117,6 +129,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
   const [health, setHealth] = useState<ReminderHealth | null>(null);
   const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [voices, setVoices] = useState<Record<string, string>>({});
+  const [prefs, setPrefs] = useState<Prefs>({ speakOnOpen: false, language: null });
+  const [announceDoseId, setAnnounceDoseId] = useState<string | null>(null);
 
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const askedForPermission = useRef(false);
@@ -129,8 +144,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(null);
       void cancelAllDoseReminders();
       void clearAll();
-      void deleteAllPhotos();
+      void deleteAllMedia();
       setPhotos({});
+      setVoices({});
     });
 
     void (async () => {
@@ -142,7 +158,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Show cached data immediately, before any network call. On a cold start
       // with no signal the app is still fully usable.
       setCache(await withLocalDoses(deviceZone()));
-      setPhotos(await readPhotos());
+      setPhotos(await photoStore.read());
+      setVoices(await voiceStore.read());
+      setPrefs(await readPrefs());
 
       const token = await getAccessToken();
       if (!token) {
@@ -242,10 +260,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     const timer = setTimeout(() => {
-      void rescheduleNow().then(refreshHealth);
+      void rescheduleNow()
+        // Every open and every action pushes the check-in back, so it only
+        // fires for someone who has stopped using the app.
+        .then(() => scheduleCareNudges(cache.medicines as Medicine[], user.timezone))
+        .then(refreshHealth);
     }, 400);
     return () => clearTimeout(timer);
-  }, [user, rescheduleNow, refreshHealth]);
+  }, [user, cache.medicines, rescheduleNow, refreshHealth]);
 
   // Ask for notification permission once there is something to remind about.
   // Nothing asked before: the only route was a button deep in Settings, so on
@@ -289,24 +311,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await cancelAllDoseReminders();
     await clearTokens();
     await clearAll();
-    // Strip photos are health data too; they leave with everything else.
-    await deleteAllPhotos();
+    // Photos and voice labels are health data too; they leave with everything else.
+    await deleteAllMedia();
     setUser(null);
     setCache(EMPTY_CACHE);
     setPhotos({});
+    setVoices({});
   }, []);
 
   const addMedicine = useCallback(
-    async (input: CreateMedicineInput, pickedPhotoUri?: string | null) => {
+    async (input: CreateMedicineInput, media: { photo?: string | null; voice?: string | null } = {}) => {
       if (!user) throw new Error('Please sign in first.');
       const { medicine } = await createMedicineLocally(input, {
         userId: user.id,
         timezone: user.timezone,
       });
 
-      if (pickedPhotoUri) {
-        await savePhoto(medicine.id, pickedPhotoUri);
-        setPhotos(await readPhotos());
+      if (media.photo) {
+        await photoStore.save(medicine.id, media.photo);
+        setPhotos(await photoStore.read());
+      }
+      if (media.voice) {
+        await voiceStore.save(medicine.id, media.voice);
+        setVoices(await voiceStore.read());
       }
 
       // Generate today's doses for it at once, so it appears on Today and its
@@ -351,6 +378,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [runSync],
   );
 
+  const updatePrefs = useCallback(
+    async (patch: Partial<Prefs>) => {
+      const next = { ...prefs, ...patch };
+      setPrefs(next);
+      await writePrefs(next);
+    },
+    [prefs],
+  );
+
   const value = useMemo(
     () => ({
       user,
@@ -368,6 +404,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refreshHealth,
       addMedicine,
       photos,
+      voices,
+      prefs,
+      updatePrefs,
+      announceDoseId,
+      setAnnounceDoseId,
     }),
     [
       user,
@@ -385,6 +426,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refreshHealth,
       addMedicine,
       photos,
+      voices,
+      prefs,
+      updatePrefs,
+      announceDoseId,
     ],
   );
 

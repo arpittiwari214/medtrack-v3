@@ -10,7 +10,7 @@
  * on the critical path between tapping "Taken" and seeing it.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
   describeMedicine,
@@ -48,6 +48,7 @@ import {
 import { AlertTriangle, Calendar, Check, Clock, Package, Pill, SkipForward } from '../components/icons';
 import { ReminderAlertBanner } from '../components/ReminderHealth';
 import { ColorDot, MedicinePhoto } from '../components/recognition';
+import { SayButton, useSayMedicine } from '../components/voice';
 
 function deviceZone(): string {
   try {
@@ -59,7 +60,9 @@ function deviceZone(): string {
 
 export default function TodayScreen() {
   const c = useTheme();
-  const { user, cache, syncing, refresh, actOnDose, photos } = useApp();
+  const { user, cache, syncing, refresh, actOnDose, photos, voices, prefs, announceDoseId, setAnnounceDoseId } =
+    useApp();
+  const say = useSayMedicine();
 
   const medicinesById = useMemo(
     () => new Map((cache.medicines as Medicine[]).map((medicine) => [medicine.id, medicine])),
@@ -94,6 +97,22 @@ export default function TodayScreen() {
       [...list].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
     return byTime(missed)[0] ?? byTime(upcoming)[0] ?? null;
   }, [missed, upcoming]);
+
+  /** Play the patient's voice label, or read the description aloud. */
+  const sayDose = (dose: DoseEvent) => {
+    const medicine = medicinesById.get(dose.medicineId);
+    const headline = medicine ? describeMedicine(medicine) : dose.medicineName;
+    say(voices[dose.medicineId], `${headline}. ${formatTime12h(dose.localTime)}.`);
+  };
+
+  // Opened from a reminder: read that dose aloud once, if the patient asked for it.
+  useEffect(() => {
+    if (!announceDoseId) return;
+    const dose = cache.doses.find((item) => item.id === announceDoseId);
+    if (dose && prefs.speakOnOpen) sayDose(dose);
+    setAnnounceDoseId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [announceDoseId]);
 
   const total = ordered.length;
   const done = taken.length + missed.length + skipped.length;
@@ -148,6 +167,7 @@ export default function TodayScreen() {
               dose={focus}
               medicine={medicinesById.get(focus.medicineId)}
               photo={photos[focus.medicineId]}
+              onSay={() => sayDose(focus)}
               onTake={() => void actOnDose(focus.id, 'take')}
               onSnooze={() => setSnoozeTarget(focus)}
               onSkip={() => void actOnDose(focus.id, 'skip')}
@@ -280,6 +300,7 @@ function NextDose({
   dose,
   medicine,
   photo,
+  onSay,
   onTake,
   onSnooze,
   onSkip,
@@ -287,6 +308,7 @@ function NextDose({
   dose: DoseEvent;
   medicine: Medicine | undefined;
   photo: string | undefined;
+  onSay: () => void;
   onTake: () => void;
   onSnooze: () => void;
   onSkip: () => void;
@@ -324,6 +346,10 @@ function NextDose({
               {dose.isCritical ? ' · Important' : ''}
             </Text>
           </View>
+        </View>
+
+        <View style={{ marginTop: spacing.lg }}>
+          <SayButton onPress={onSay} />
         </View>
 
         {overdue && (
