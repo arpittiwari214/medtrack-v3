@@ -36,6 +36,8 @@ export interface SignUpInput {
   password: string;
   name: string;
   timezone: string;
+  confirmedAdult: true;
+  setupFor?: 'self' | 'family' | null;
   acceptedTerms: true;
   acceptedPrivacy: true;
   marketingEmail?: boolean;

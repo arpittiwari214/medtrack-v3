@@ -55,12 +55,33 @@ export const passwordSchema = z
 
 /* ────────────────────────────────── Auth ────────────────────────────────── */
 
+/**
+ * Under the DPDP Act anyone under 18 is a child, whose data needs verifiable
+ * parental consent that MedTrack does not collect — so accounts are adults only.
+ * Compared against today in UTC: at worst a day out on the 18th birthday.
+ */
+export function isAdult(dateOfBirth: string, today = new Date().toISOString().slice(0, 10)): boolean {
+  return dateOfBirth <= `${Number(today.slice(0, 4)) - 18}${today.slice(4)}`;
+}
+
+const adultDateOfBirthSchema = localDateSchema.refine((dob) => isAdult(dob), {
+  message: 'MedTrack accounts are for people aged 18 or over.',
+});
+
+/** Who the medicines are for. Asked once at signup; optional. */
+export const setupForSchema = z.enum(['self', 'family']);
+
 export const signupSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   name: z.string().trim().min(1, 'Your name is required.').max(120),
   timezone: timeZoneSchema,
-  dateOfBirth: localDateSchema.nullish(),
+  dateOfBirth: adultDateOfBirthSchema.nullish(),
+  /** A self-declaration, recorded with its time. Mandatory. */
+  confirmedAdult: z.literal(true, {
+    errorMap: () => ({ message: 'MedTrack accounts are for people aged 18 or over.' }),
+  }),
+  setupFor: setupForSchema.nullish(),
   /** Both consents are mandatory to create an account under the DPDP Act. */
   acceptedTerms: z.literal(true, {
     errorMap: () => ({ message: 'You must accept the Terms of Service.' }),
@@ -98,7 +119,7 @@ export const changePasswordSchema = z.object({
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   timezone: timeZoneSchema.optional(),
-  dateOfBirth: localDateSchema.nullish(),
+  dateOfBirth: adultDateOfBirthSchema.nullish(),
   phone: z.string().trim().max(20).nullish(),
 });
 

@@ -81,6 +81,8 @@ router.get('/export', async (req, res, next) => {
         timezone: user.timezone,
         dateOfBirth: user.dateOfBirth,
         phone: user.phone,
+        setupFor: user.setupFor,
+        adultDeclaredAt: user.adultDeclaredAt,
         createdAt: user.createdAt,
         consents: user.consents,
       },

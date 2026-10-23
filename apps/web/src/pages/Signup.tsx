@@ -20,6 +20,8 @@ export default function Signup() {
 
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [confirmedAdult, setConfirmedAdult] = useState(false);
+  const [setupFor, setSetupFor] = useState<'self' | 'family' | null>(null);
   const [marketingEmail, setMarketingEmail] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -35,6 +37,10 @@ export default function Signup() {
     setError('');
     setFieldErrors({});
 
+    if (!confirmedAdult) {
+      setError('MedTrack accounts are for people aged 18 or over.');
+      return;
+    }
     if (!acceptedTerms) {
       setError('Please accept the Terms of Service and Privacy Policy to continue.');
       return;
@@ -45,6 +51,8 @@ export default function Signup() {
       await signUp({
         ...form,
         timezone: detectTimeZone(),
+        confirmedAdult: true,
+        setupFor,
         acceptedTerms: true,
         acceptedPrivacy: true,
         marketingEmail,
@@ -131,6 +139,38 @@ export default function Signup() {
             </span>
           )}
         </div>
+
+        <fieldset className="field">
+          <legend className="label">Who will take these medicines?</legend>
+          <div className="row row-wrap" style={{ gap: 'var(--s2)' }}>
+            {(
+              [
+                ['self', 'Me'],
+                ['family', 'A parent or another adult I look after'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className="slot-toggle"
+                aria-pressed={setupFor === value}
+                onClick={() => setSetupFor(setupFor === value ? null : value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="field-hint">Optional. It helps us build for the people who use MedTrack.</span>
+        </fieldset>
+
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={confirmedAdult}
+            onChange={(event) => setConfirmedAdult(event.target.checked)}
+          />
+          <span className="t-sm">I am 18 or older.</span>
+        </label>
 
         {/* Never pre-ticked. Consent that was assumed is not consent. */}
         <label className="checkbox-row">

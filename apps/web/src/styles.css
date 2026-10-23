@@ -1494,6 +1494,13 @@ a:hover {
   vertical-align: middle;
 }
 
+fieldset.field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .slot-toggle {
   min-height: 44px;
   padding: 0 var(--s4);

@@ -61,6 +61,7 @@ if (auth.status !== 200) {
       password: PASSWORD,
       name: 'Demo Patient',
       timezone: TZ,
+      confirmedAdult: true,
       acceptedTerms: true,
       acceptedPrivacy: true,
     },

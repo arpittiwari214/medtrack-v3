@@ -347,3 +347,12 @@ describe('hindi', () => {
     expect(localeFrom(undefined)).toBe('en');
   });
 });
+
+describe('isAdult', () => {
+  it('turns 18 on the birthday, not the day after', async () => {
+    const { isAdult } = await import('./validation.js');
+    expect(isAdult('2008-10-23', '2026-10-23')).toBe(true);
+    expect(isAdult('2008-10-24', '2026-10-23')).toBe(false);
+    expect(isAdult('1950-01-01', '2026-10-23')).toBe(true);
+  });
+});

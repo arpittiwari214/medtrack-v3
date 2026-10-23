@@ -113,6 +113,8 @@ router.post('/signup', signupLimiter, validate(signupSchema), async (req, res, n
       name: input.name,
       timezone: input.timezone,
       dateOfBirth: input.dateOfBirth ?? null,
+      setupFor: input.setupFor ?? null,
+      adultDeclaredAt: now,
       roles: ['patient'],
       consents,
     });

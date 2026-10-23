@@ -69,6 +69,9 @@ const userSchema = new Schema(
 
     dateOfBirth: { type: String, default: null },
     phone: { type: String, default: null, maxlength: 20 },
+    setupFor: { type: String, enum: ['self', 'family', null], default: null },
+    /** Evidence of the 18+ self-declaration made at signup. */
+    adultDeclaredAt: { type: Date, default: null },
 
     emailVerifiedAt: { type: Date, default: null },
     consents: { type: [consentSchema], default: [] },

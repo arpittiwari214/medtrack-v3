@@ -47,6 +47,7 @@ async function signup(overrides: Partial<{ email: string; timezone: string }> = 
     password: 'a-sufficiently-long-password',
     name: `Test User ${accountCounter}`,
     timezone: overrides.timezone ?? IST,
+    confirmedAdult: true,
     acceptedTerms: true,
     acceptedPrivacy: true,
   });
@@ -92,11 +93,15 @@ describe('authentication', () => {
       password: 'a-sufficiently-long-password',
       name: 'Consent Tester',
       timezone: IST,
+      confirmedAdult: true,
+      setupFor: 'family',
       acceptedTerms: true,
       acceptedPrivacy: true,
     });
 
     expect(response.status).toBe(201);
+    expect(response.body.user.setupFor).toBe('family');
+    expect(response.body.user.adultDeclaredAt).toBeTruthy();
     const kinds = response.body.user.consents.map((c: { kind: string }) => c.kind);
     expect(kinds).toContain('terms_of_service');
     expect(kinds).toContain('privacy_policy');
@@ -111,11 +116,32 @@ describe('authentication', () => {
       password: 'a-sufficiently-long-password',
       name: 'No Consent',
       timezone: IST,
+      confirmedAdult: true,
       acceptedTerms: false,
       acceptedPrivacy: true,
     });
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('refuses signup without the 18+ declaration, or with an under-18 date of birth', async () => {
+    const base = {
+      password: 'a-sufficiently-long-password',
+      name: 'Minor',
+      timezone: IST,
+      acceptedTerms: true,
+      acceptedPrivacy: true,
+    };
+    const undeclared = await request(app)
+      .post('/api/auth/signup')
+      .send({ ...base, email: 'undeclared@example.com' });
+    expect(undeclared.status).toBe(400);
+
+    const thisYear = new Date().getUTCFullYear();
+    const minor = await request(app)
+      .post('/api/auth/signup')
+      .send({ ...base, email: 'minor@example.com', confirmedAdult: true, dateOfBirth: `${thisYear - 15}-01-01` });
+    expect(minor.status).toBe(400);
   });
 
   it('rejects a short password', async () => {
@@ -124,6 +150,7 @@ describe('authentication', () => {
       password: 'abc123',
       name: 'Short',
       timezone: IST,
+      confirmedAdult: true,
       acceptedTerms: true,
       acceptedPrivacy: true,
     });

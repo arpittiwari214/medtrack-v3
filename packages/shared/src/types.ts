@@ -45,6 +45,10 @@ export interface User {
   timezone: TimeZone;
   dateOfBirth?: LocalDate | null;
   phone?: string | null;
+  /** Who the medicines are for, if they said at signup. */
+  setupFor?: 'self' | 'family' | null;
+  /** When they declared they are 18 or over. */
+  adultDeclaredAt?: InstantISO | null;
   emailVerifiedAt?: InstantISO | null;
   /** Consent records required under the DPDP Act; see `docs/legal`. */
   consents: ConsentRecord[];
