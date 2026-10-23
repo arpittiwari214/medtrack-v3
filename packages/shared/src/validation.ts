@@ -222,6 +222,7 @@ export const createMedicineSchema = z.object({
   pillColor: z.enum(MEDICINE_COLORS).nullish(),
   stripColor: z.enum(MEDICINE_COLORS).nullish(),
   purpose: z.string().trim().max(40, 'Keep it short — a word or two.').nullish(),
+  person: z.string().trim().max(30, 'Keep it short — a name like "Papa".').nullish(),
   stock: stockSchema.nullish(),
   missedAfterMinutes: z.number().int().min(5).max(1440).nullish(),
 });

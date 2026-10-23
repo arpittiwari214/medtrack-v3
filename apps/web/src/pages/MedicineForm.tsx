@@ -72,6 +72,7 @@ export default function MedicineForm() {
   const [pillColor, setPillColor] = useState<MedicineColor | null>(null);
   const [stripColor, setStripColor] = useState<MedicineColor | null>(null);
   const [purpose, setPurpose] = useState('');
+  const [person, setPerson] = useState('');
 
   const [kind, setKind] = useState<ScheduleKind>('daily');
   const [times, setTimes] = useState<string[]>(['08:00']);
@@ -103,6 +104,7 @@ export default function MedicineForm() {
         setPillColor(medicine.pillColor ?? null);
         setStripColor(medicine.stripColor ?? null);
         setPurpose(medicine.purpose ?? '');
+        setPerson(medicine.person ?? '');
         setKind(medicine.schedule.kind);
         setTimes(medicine.schedule.times.length > 0 ? medicine.schedule.times : ['08:00']);
         setStartDate(medicine.schedule.startDate);
@@ -157,6 +159,7 @@ export default function MedicineForm() {
       pillColor,
       stripColor,
       purpose: purpose.trim() || null,
+      person: person.trim() || null,
       schedule: {
         kind,
         times: kind === 'as_needed' ? [] : times,
@@ -216,6 +219,24 @@ export default function MedicineForm() {
             onChange={(event) => setPurpose(event.target.value)}
           />
           {fieldErrors['purpose'] && <span className="field-error">{fieldErrors['purpose']}</span>}
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="person">
+            Who takes it? (leave empty if it is you)
+          </label>
+          <input
+            id="person"
+            className="input"
+            maxLength={30}
+            placeholder="e.g. Papa"
+            value={person}
+            aria-invalid={Boolean(fieldErrors['person'])}
+            onChange={(event) => setPerson(event.target.value)}
+          />
+          <span className="field-hint">
+            For an account that looks after more than one person. Reminders will say whose medicine it is.
+          </span>
+          {fieldErrors['person'] && <span className="field-error">{fieldErrors['person']}</span>}
         </div>
       </section>
 

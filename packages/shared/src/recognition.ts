@@ -127,6 +127,7 @@ interface Recognisable {
   form?: string | null;
   pillColor?: MedicineColor | null;
   purpose?: string | null;
+  person?: string | null;
 }
 
 /**
@@ -137,6 +138,13 @@ interface Recognisable {
  * headline on reminders and dose cards, with the name beneath it.
  */
 export function describeMedicine(medicine: Recognisable, locale: Locale = 'en'): string {
+  // On a phone shared by a family, whose medicine it is comes first.
+  const person = medicine.person?.trim();
+  const look = describeLook(medicine, locale);
+  return person ? `${person}: ${look}` : look;
+}
+
+function describeLook(medicine: Recognisable, locale: Locale): string {
   const form = medicine.form && medicine.form !== 'other' ? medicine.form : 'medicine';
   const purpose = medicine.purpose?.trim();
 

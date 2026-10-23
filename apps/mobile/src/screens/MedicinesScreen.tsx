@@ -86,6 +86,7 @@ export default function MedicinesScreen() {
                           <ColorDot color={medicine.pillColor} size={14} />
                           <ColorDot color={medicine.stripColor} size={14} />
                           <Text style={[type.lg, { color: c.text, flexShrink: 1 }]} numberOfLines={2}>
+                            {medicine.person ? `${medicine.person}: ` : ''}
                             {medicine.name}
                           </Text>
                         </View>

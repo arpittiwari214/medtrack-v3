@@ -68,6 +68,7 @@ const medicineSchema = new Schema(
     pillColor: { type: String, default: null, enum: [...MEDICINE_COLORS, null] },
     stripColor: { type: String, default: null, enum: [...MEDICINE_COLORS, null] },
     purpose: { type: String, default: null, trim: true, maxlength: 40 },
+    person: { type: String, default: null, trim: true, maxlength: 30 },
 
     stock: { type: stockSchema, default: null },
     missedAfterMinutes: { type: Number, default: null, min: 5, max: 1440 },

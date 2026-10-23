@@ -187,6 +187,12 @@ export interface Medicine {
   stripColor?: MedicineColor | null;
   /** The patient's own words for what it is for: "BP", "sugar", "थायराइड". */
   purpose?: string | null;
+  /**
+   * Who takes it, when one phone looks after several people ("Papa"). Null
+   * means the account holder. Shared phones are common: CoWIN let one number
+   * enrol five people for the same reason.
+   */
+  person?: string | null;
   /** Null when the patient is not tracking supply for this medicine. */
   stock?: StockInfo | null;
   /** Grace period before a due dose counts as missed. Overrides the default. */

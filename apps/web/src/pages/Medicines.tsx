@@ -105,7 +105,10 @@ export default function Medicines() {
                       <div className="row" style={{ gap: 'var(--s2)' }}>
                         <ColorDot color={medicine.pillColor} size={18} />
                         <ColorDot color={medicine.stripColor} size={18} />
-                        <h2 className="t-lg truncate">{medicine.name}</h2>
+                        <h2 className="t-lg truncate">
+                          {medicine.person ? `${medicine.person}: ` : ''}
+                          {medicine.name}
+                        </h2>
                       </div>
                       <p className="subtle">
                         {[medicine.strength, medicine.purpose && `for ${medicine.purpose}`]

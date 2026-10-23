@@ -61,7 +61,7 @@ function fallbackName(
 
 export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
   const c = useTheme();
-  const { addMedicine, user } = useApp();
+  const { addMedicine, user, cache } = useApp();
   const { t, locale } = useT();
 
   const [photo, setPhoto] = useState<string | null>(null);
@@ -69,6 +69,8 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
   const [pillColor, setPillColor] = useState<MedicineColor | null>(null);
   const [stripColor, setStripColor] = useState<MedicineColor | null>(null);
   const [purpose, setPurpose] = useState('');
+  const [person, setPerson] = useState('');
+  const people = [...new Set(cache.medicines.map((m) => m.person).filter((p): p is string => Boolean(p)))];
   const [name, setName] = useState('');
   const [strength, setStrength] = useState('');
   const [times, setTimes] = useState<string[]>(['08:00']);
@@ -122,6 +124,7 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
       pillColor,
       stripColor,
       purpose: purpose.trim() || null,
+      person: person.trim() || null,
       schedule: { kind: 'daily', times, startDate: todayIn(user?.timezone ?? deviceZone()) },
       stock:
         units.trim() && Number.isFinite(unitCount) && unitCount > 0
@@ -257,6 +260,44 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
         <Panel>
           <PanelHead label={t('step_more')} />
           <PanelBody style={{ gap: spacing.lg }}>
+            <View style={{ gap: spacing.sm }}>
+              <Text style={[type.base, { color: c.text, fontWeight: '600' }]}>{t('who_takes')}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                {['', ...people].map((option) => {
+                  const selected = person.trim() === option;
+                  return (
+                    <Pressable
+                      key={option || 'me'}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected }}
+                      onPress={() => setPerson(option)}
+                      style={{
+                        minHeight: 44,
+                        paddingHorizontal: spacing.lg,
+                        justifyContent: 'center',
+                        borderRadius: radius.sm,
+                        borderWidth: selected ? 2 : 1,
+                        borderColor: selected ? c.brand : c.borderStrong,
+                        backgroundColor: c.surface,
+                      }}
+                    >
+                      <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{option || t('who_me')}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={person}
+                onChangeText={setPerson}
+                maxLength={30}
+                placeholder={t('who_placeholder')}
+                placeholderTextColor={c.text3}
+                accessibilityLabel={t('who_takes')}
+              />
+              <Text style={[type.xs, { color: c.text2, lineHeight: 18 }]}>{t('who_help')}</Text>
+            </View>
+
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
               <View style={{ flex: 1 }}>
                 <Text style={[type.base, { color: c.text, fontWeight: '600' }]}>{t('important_toggle')}</Text>

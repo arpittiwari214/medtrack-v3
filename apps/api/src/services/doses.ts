@@ -61,6 +61,7 @@ export interface MedicineSource {
   pillColor?: string | null | undefined;
   stripColor?: string | null | undefined;
   purpose?: string | null | undefined;
+  person?: string | null | undefined;
   instructions?: string | null | undefined;
   prescribedBy?: string | null | undefined;
   missedAfterMinutes?: number | null | undefined;
@@ -100,6 +101,7 @@ export function toDomainMedicine(doc: MedicineSource): MedicineShape {
     pillColor: (doc.pillColor ?? null) as MedicineShape['pillColor'],
     stripColor: (doc.stripColor ?? null) as MedicineShape['stripColor'],
     purpose: doc.purpose ?? null,
+    person: doc.person ?? null,
     instructions: doc.instructions ?? '',
     prescribedBy: doc.prescribedBy ?? null,
     missedAfterMinutes: doc.missedAfterMinutes ?? null,

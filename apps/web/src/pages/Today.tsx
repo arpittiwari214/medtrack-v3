@@ -292,7 +292,7 @@ function NextDose({
           </h2>
         </div>
         <p className="next-dose-meta">
-          {medicine && (medicine.pillColor || medicine.purpose) ? `${dose.medicineName} · ` : ''}
+          {medicine && describeMedicine(medicine) !== dose.medicineName ? `${dose.medicineName} · ` : ''}
           {dose.medicineStrength ? `${dose.medicineStrength} · ` : ''}
           {formatTime12h(dose.localTime)}
           {dose.isCritical && ' · Critical'}
@@ -355,6 +355,7 @@ function RailRow({
       </span>
       <span className="rail-name">
         <ColorDot color={medicine?.pillColor} />{' '}
+        {medicine?.person ? `${medicine.person}: ` : ''}
         {dose.medicineName} <span className="rail-strength">{dose.medicineStrength}</span>
         {medicine?.purpose && <span className="purpose-tag">{medicine.purpose}</span>}
         {dose.isCritical && <span className="rail-critical" aria-label="Critical" />}

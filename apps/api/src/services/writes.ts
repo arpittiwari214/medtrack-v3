@@ -45,6 +45,7 @@ export function medicineFields(input: CreateMedicineInput, timezone: string) {
     pillColor: input.pillColor ?? null,
     stripColor: input.stripColor ?? null,
     purpose: input.purpose ?? null,
+    person: input.person ?? null,
     stock: input.stock ?? null,
     missedAfterMinutes: input.missedAfterMinutes ?? null,
   };
@@ -67,6 +68,7 @@ export function applyMedicineUpdate(
   if (input.pillColor !== undefined) medicine.pillColor = input.pillColor ?? null;
   if (input.stripColor !== undefined) medicine.stripColor = input.stripColor ?? null;
   if (input.purpose !== undefined) medicine.purpose = input.purpose ?? null;
+  if (input.person !== undefined) medicine.person = input.person ?? null;
   if (input.missedAfterMinutes !== undefined) {
     medicine.missedAfterMinutes = input.missedAfterMinutes ?? null;
   }

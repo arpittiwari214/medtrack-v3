@@ -256,6 +256,7 @@ describe('medicines', () => {
       pillColor: 'white',
       stripColor: 'silver',
       purpose: 'BP',
+      person: 'Papa',
       schedule: { kind: 'daily', times: ['08:00'], startDate: TODAY_IST },
     });
 
@@ -265,6 +266,7 @@ describe('medicines', () => {
       pillColor: 'white',
       stripColor: 'silver',
       purpose: 'BP',
+      person: 'Papa',
       strength: '',
     });
   });

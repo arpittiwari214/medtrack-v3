@@ -211,6 +211,7 @@ export default function TodayScreen() {
                     name={dose.medicineName}
                     strength={dose.medicineStrength}
                     purpose={medicinesById.get(dose.medicineId)?.purpose}
+                    person={medicinesById.get(dose.medicineId)?.person}
                     leading={<ColorDot color={medicinesById.get(dose.medicineId)?.pillColor} />}
                     status={dose.status}
                     critical={dose.isCritical}

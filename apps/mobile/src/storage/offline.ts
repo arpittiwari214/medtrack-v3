@@ -276,6 +276,7 @@ export async function createMedicineLocally(
     pillColor: input.pillColor ?? null,
     stripColor: input.stripColor ?? null,
     purpose: input.purpose ?? null,
+    person: input.person ?? null,
     stock: input.stock ? { ...input.stock, lastRefillAt: null, lastRefillUnits: null } : null,
     missedAfterMinutes: input.missedAfterMinutes ?? null,
     archivedAt: null,

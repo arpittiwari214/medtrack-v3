@@ -356,3 +356,13 @@ describe('isAdult', () => {
     expect(isAdult('1950-01-01', '2026-10-23')).toBe(true);
   });
 });
+
+describe('describeMedicine on a shared phone', () => {
+  it('says whose medicine it is first, in either language', async () => {
+    const { describeMedicine } = await import('./recognition.js');
+    const papa = { name: 'Amlodipine', form: 'tablet', pillColor: 'white', purpose: 'BP', person: 'Papa' } as const;
+    expect(describeMedicine(papa)).toBe('Papa: White tablet for BP');
+    expect(describeMedicine(papa, 'hi')).toBe('Papa: सफ़ेद गोली — BP के लिए');
+    expect(describeMedicine({ ...papa, person: null })).toBe('White tablet for BP');
+  });
+});
