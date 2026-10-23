@@ -10,20 +10,22 @@ import {
   DOSE_SLOTS,
   MEDICINE_COLORS,
   MEDICINE_COLOR_HEX,
-  MEDICINE_COLOR_LABEL,
-  formatTime12h,
+  colorLabel,
+  formatTimeFor,
   slotNotation,
   slotOf,
   type MedicineColor,
 } from '@medtrack/shared';
 import { MIN_TOUCH, TABULAR, radius, spacing, type, useTheme } from '../theme';
 import { Pill } from './icons';
+import { useT } from '../i18n/useT';
 
 export function ColorDot({ color, size = 12 }: { color: MedicineColor | null | undefined; size?: number }) {
+  const { locale } = useT();
   if (!color) return null;
   return (
     <View
-      accessibilityLabel={MEDICINE_COLOR_LABEL[color]}
+      accessibilityLabel={colorLabel(color, locale)}
       style={{
         width: size,
         height: size,
@@ -47,6 +49,7 @@ export function ColorSwatches({
   onChange: (next: MedicineColor | null) => void;
 }) {
   const c = useTheme();
+  const { locale } = useT();
   return (
     <View style={{ gap: spacing.sm }}>
       <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{label}</Text>
@@ -58,7 +61,7 @@ export function ColorSwatches({
               key={color}
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
-              accessibilityLabel={`${label}: ${MEDICINE_COLOR_LABEL[color]}`}
+              accessibilityLabel={`${label}: ${colorLabel(color, locale)}`}
               // Tapping the chosen colour again clears it.
               onPress={() => onChange(selected ? null : color)}
               style={{
@@ -75,7 +78,7 @@ export function ColorSwatches({
             >
               <ColorDot color={color} size={18} />
               <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>
-                {MEDICINE_COLOR_LABEL[color]}
+                {colorLabel(color, locale)}
               </Text>
             </Pressable>
           );
@@ -96,11 +99,12 @@ export function MedicinePhoto({
   size?: number;
 }) {
   const c = useTheme();
+  const { t } = useT();
   if (uri) {
     return (
       <Image
         source={{ uri }}
-        accessibilityLabel="Photo of the strip"
+        accessibilityLabel={t('a11y_strip_photo')}
         style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: c.surface2 }}
       />
     );
@@ -137,6 +141,7 @@ function shift(localTime: string, minutes: number): string {
  */
 export function SlotPicker({ times, onChange }: { times: string[]; onChange: (next: string[]) => void }) {
   const c = useTheme();
+  const { t, locale } = useT();
   const bySlot = new Map(times.map((time) => [slotOf(time), time]));
 
   function toggle(slot: (typeof DOSE_SLOTS)[number]) {
@@ -153,7 +158,7 @@ export function SlotPicker({ times, onChange }: { times: string[]; onChange: (ne
   return (
     <View style={{ gap: spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>When do you take it?</Text>
+        <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{t('when_take')}</Text>
         <Text style={[type.sm, TABULAR, { color: c.text2 }]}>{slotNotation(times)}</Text>
       </View>
 
@@ -178,7 +183,7 @@ export function SlotPicker({ times, onChange }: { times: string[]; onChange: (ne
               }}
             >
               <Text style={[type.sm, { color: on ? c.onBrand : c.text2, fontWeight: '700' }]}>
-                {slot.label}
+                {locale === 'hi' ? slot.labelHi : slot.label}
               </Text>
             </Pressable>
           );
@@ -198,11 +203,19 @@ export function SlotPicker({ times, onChange }: { times: string[]; onChange: (ne
               backgroundColor: c.surface2,
             }}
           >
-            <Stepper label="−" accessibilityLabel={`Earlier than ${formatTime12h(time)}`} onPress={() => adjust(time, -STEP_MINUTES)} />
+            <Stepper
+              label="−"
+              accessibilityLabel={t('earlier_than', { time: formatTimeFor(time, locale) })}
+              onPress={() => adjust(time, -STEP_MINUTES)}
+            />
             <Text style={[type.lg, TABULAR, { flex: 1, textAlign: 'center', color: c.text }]}>
-              {formatTime12h(time)}
+              {formatTimeFor(time, locale)}
             </Text>
-            <Stepper label="+" accessibilityLabel={`Later than ${formatTime12h(time)}`} onPress={() => adjust(time, STEP_MINUTES)} />
+            <Stepper
+              label="+"
+              accessibilityLabel={t('later_than', { time: formatTimeFor(time, locale) })}
+              onPress={() => adjust(time, STEP_MINUTES)}
+            />
           </View>
         ))}
       </ScrollView>

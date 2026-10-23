@@ -12,7 +12,7 @@
 
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { formatTime12h, type Appointment, type AppointmentKind } from '@medtrack/shared';
+import { formatTimeFor, type Appointment, type AppointmentKind, type Locale } from '@medtrack/shared';
 import { useApp } from '../context/AppContext';
 import { TABULAR, radius, spacing, type, useTheme } from '../theme';
 import {
@@ -27,13 +27,21 @@ import {
   sharedStyles,
 } from '../components/ui';
 import { AlertTriangle, Calendar, Check } from '../components/icons';
+import { formatDate, type StringKey } from '../i18n';
+import { useT } from '../i18n/useT';
 
-const KIND_LABEL: Record<AppointmentKind, string> = {
-  doctor: 'Doctor visit',
-  lab_test: 'Lab test',
-  procedure: 'Procedure',
-  vaccination: 'Vaccination',
-  other: 'Appointment',
+const KIND_LABEL: Record<AppointmentKind, StringKey> = {
+  doctor: 'kind_doctor',
+  lab_test: 'kind_lab_test',
+  procedure: 'kind_procedure',
+  vaccination: 'kind_vaccination',
+  other: 'kind_other',
+};
+
+const STATUS_LABEL: Record<string, StringKey> = {
+  completed: 'status_completed',
+  cancelled: 'status_cancelled',
+  missed: 'status_missed',
 };
 
 type Scope = 'upcoming' | 'past';
@@ -41,6 +49,7 @@ type Scope = 'upcoming' | 'past';
 export default function AppointmentsScreen() {
   const c = useTheme();
   const { cache, syncing, refresh, updateAppointment } = useApp();
+  const { t, locale } = useT();
   const [scope, setScope] = useState<Scope>('upcoming');
 
   const { upcoming, past } = useMemo(() => {
@@ -60,10 +69,10 @@ export default function AppointmentsScreen() {
   const shown = scope === 'upcoming' ? upcoming : past;
 
   function confirmDone(appointment: Appointment) {
-    Alert.alert('Mark as done?', appointment.title, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('mark_done_confirm'), appointment.title, [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Mark done',
+        text: t('mark_done'),
         onPress: () =>
           void updateAppointment(appointment.id, {
             status: 'completed',
@@ -80,8 +89,8 @@ export default function AppointmentsScreen() {
       refreshControl={<RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={c.brand} />}
     >
       <ScreenHeader
-        eyebrow="Visits and lab tests"
-        title="Appointments"
+        eyebrow={t('visits_eyebrow')}
+        title={t('appointments_title')}
         action={
           <View
             style={{
@@ -112,7 +121,7 @@ export default function AppointmentsScreen() {
                   }}
                 >
                   <Text style={[type.xs, { color: active ? c.text : c.text2, fontWeight: '600' }]}>
-                    {option === 'upcoming' ? 'Upcoming' : 'Past'}
+                    {t(option === 'upcoming' ? 'upcoming' : 'past')}
                   </Text>
                 </Pressable>
               );
@@ -124,19 +133,19 @@ export default function AppointmentsScreen() {
       {shown.length === 0 ? (
         <EmptyState
           icon={(colour) => <Calendar size={22} color={colour} />}
-          title={scope === 'upcoming' ? 'Nothing coming up' : 'Nothing in the past'}
-          description="Add a doctor visit or lab test on the web app. Reminders arrive here the day before and an hour ahead."
+          title={t(scope === 'upcoming' ? 'visits_empty_up' : 'visits_empty_past')}
+          description={t('visits_empty_body')}
         />
       ) : (
         <View style={sharedStyles.stack}>
           {shown.map((appointment) => (
             <Panel key={appointment.id}>
               <PanelHead
-                label={KIND_LABEL[appointment.kind] ?? 'Appointment'}
+                label={t(KIND_LABEL[appointment.kind] ?? 'kind_other')}
                 aside={
                   <Text style={[type.xs, TABULAR, { color: c.text2, fontWeight: '600' }]}>
-                    {relativeDay(appointment.scheduledAt, appointment.localDate)} ·{' '}
-                    {formatTime12h(appointment.localTime)}
+                    {relativeDay(appointment.scheduledAt, appointment.localDate, locale, t)} ·{' '}
+                    {formatTimeFor(appointment.localTime, locale)}
                   </Text>
                 }
               />
@@ -148,7 +157,7 @@ export default function AppointmentsScreen() {
                   </Text>
                   {appointment.status !== 'scheduled' && (
                     <Badge
-                      label={appointment.status}
+                      label={STATUS_LABEL[appointment.status] ? t(STATUS_LABEL[appointment.status]!) : appointment.status}
                       tone={appointment.status === 'completed' ? 'ok' : 'neutral'}
                     />
                   )}
@@ -156,7 +165,7 @@ export default function AppointmentsScreen() {
 
                 {appointment.provider ? (
                   <Text style={[type.xs, { color: c.text3, marginTop: 4 }]}>
-                    With {appointment.provider}
+                    {t('with_provider', { provider: appointment.provider })}
                   </Text>
                 ) : null}
                 {appointment.location ? (
@@ -168,7 +177,7 @@ export default function AppointmentsScreen() {
                 {appointment.requiresFasting && appointment.status === 'scheduled' && (
                   <View style={{ marginTop: spacing.md }}>
                     <Banner tone="warn" icon={<AlertTriangle size={16} color={c.warnInk} />}>
-                      Fasting required — do not eat beforehand.
+                      {t('fasting_required')}
                     </Banner>
                   </View>
                 )}
@@ -184,7 +193,7 @@ export default function AppointmentsScreen() {
                 {appointment.status === 'scheduled' && (
                   <View style={{ marginTop: spacing.lg }}>
                     <ActionSecondary
-                      label="Mark as done"
+                      label={t('mark_done')}
                       icon={(colour) => <Check size={16} color={colour} />}
                       onPress={() => confirmDone(appointment)}
                     />
@@ -203,23 +212,22 @@ export default function AppointmentsScreen() {
  * "Tomorrow" beats a date you have to decode. Falls back to the stored local
  * date beyond a few days, which is the point at which a weekday stops helping.
  */
-function relativeDay(scheduledAt: string, localDate: string): string {
-  const days = Math.round(
-    (new Date(scheduledAt).getTime() - Date.now()) / 86_400_000,
-  );
+function relativeDay(
+  scheduledAt: string,
+  localDate: string,
+  locale: Locale,
+  t: ReturnType<typeof useT>['t'],
+): string {
+  const days = Math.round((new Date(scheduledAt).getTime() - Date.now()) / 86_400_000);
 
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days === -1) return 'Yesterday';
+  if (days === 0) return t('day_today');
+  if (days === 1) return t('day_tomorrow');
+  if (days === -1) return t('day_yesterday');
   if (days > 1 && days <= 6) {
-    return new Date(`${localDate}T00:00:00Z`).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      timeZone: 'UTC',
-    });
+    return new Date(`${localDate}T00:00:00Z`).toLocaleDateString(
+      locale === 'hi' ? 'hi-IN-u-nu-latn' : 'en-GB',
+      { weekday: 'long', timeZone: 'UTC' },
+    );
   }
-  return new Date(`${localDate}T00:00:00Z`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  });
+  return formatDate(locale, localDate, 'short');
 }

@@ -315,3 +315,35 @@ describe('recognition', () => {
     expect(slotNotation(['21:30'])).toBe('0-0-1');
   });
 });
+
+describe('hindi', () => {
+  it('agrees colour with the gender of the form', async () => {
+    const { describeMedicine } = await import('./recognition.js');
+    // गोली is feminine: पीला → पीली.
+    expect(describeMedicine({ name: 'x', form: 'tablet', pillColor: 'yellow', purpose: 'BP' }, 'hi')).toBe(
+      'पीली गोली — BP के लिए',
+    );
+    // कैप्सूल is masculine: unchanged.
+    expect(describeMedicine({ name: 'x', form: 'capsule', pillColor: 'yellow' }, 'hi')).toBe('पीला कैप्सूल');
+    // Invariant adjectives do not change.
+    expect(describeMedicine({ name: 'x', form: 'tablet', pillColor: 'white' }, 'hi')).toBe('सफ़ेद गोली');
+    expect(describeMedicine({ name: 'Telma 40', purpose: 'BP' }, 'hi')).toBe('Telma 40 — BP के लिए');
+  });
+
+  it('says times the way they are spoken, with Western digits', async () => {
+    const { formatTimeFor } = await import('./recognition.js');
+    expect(formatTimeFor('08:00', 'hi')).toBe('सुबह 8:00');
+    expect(formatTimeFor('14:30', 'hi')).toBe('दोपहर 2:30');
+    expect(formatTimeFor('18:00', 'hi')).toBe('शाम 6:00');
+    expect(formatTimeFor('21:00', 'hi')).toBe('रात 9:00');
+    expect(formatTimeFor('21:00', 'en')).toBe('9:00 PM');
+    expect(formatTimeFor('00:15', 'en')).toBe('12:15 AM');
+  });
+
+  it('picks Hindi from a phone locale tag', async () => {
+    const { localeFrom } = await import('./recognition.js');
+    expect(localeFrom('hi-IN')).toBe('hi');
+    expect(localeFrom('en-IN')).toBe('en');
+    expect(localeFrom(undefined)).toBe('en');
+  });
+});

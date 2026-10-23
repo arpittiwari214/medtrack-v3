@@ -37,6 +37,7 @@ import { api, setSessionEndedHandler } from '../api/client';
 import { clearTokens, getAccessToken, setTokens } from '../storage/secure';
 import { deleteAllMedia, photoStore, voiceStore } from '../storage/media';
 import { readPrefs, writePrefs, type Prefs } from '../storage/prefs';
+import { resolveLocale } from '../i18n';
 import {
   actOnDoseLocally,
   clearAll,
@@ -132,6 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [voices, setVoices] = useState<Record<string, string>>({});
   const [prefs, setPrefs] = useState<Prefs>({ speakOnOpen: false, language: null });
   const [announceDoseId, setAnnounceDoseId] = useState<string | null>(null);
+  const locale = resolveLocale(prefs.language);
 
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const askedForPermission = useRef(false);
@@ -153,7 +155,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Channels before anything that could prompt: on Android 13+ the
       // permission dialog does not appear until a channel exists.
       await configureChannels();
-      await registerNotificationActions();
 
       // Show cached data immediately, before any network call. On a cold start
       // with no signal the app is still fully usable.
@@ -180,6 +181,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     })();
   }, []);
+
+  // Button titles and channel names are held by the OS, so they are re-sent
+  // whenever the language changes, not just at startup.
+  useEffect(() => {
+    void configureChannels(locale).then(() => registerNotificationActions(locale));
+  }, [locale]);
 
   /* ── Sync ── */
 
@@ -226,8 +233,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const rescheduleNow = useCallback(
     (force = false) =>
-      rescheduleReminders(cache.medicines as Medicine[], { resolvedDoseIds, force }),
-    [cache.medicines, resolvedDoseIds],
+      rescheduleReminders(cache.medicines as Medicine[], { resolvedDoseIds, force, locale }),
+    [cache.medicines, resolvedDoseIds, locale],
   );
 
   const refreshHealth = useCallback(async () => {
@@ -263,11 +270,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       void rescheduleNow()
         // Every open and every action pushes the check-in back, so it only
         // fires for someone who has stopped using the app.
-        .then(() => scheduleCareNudges(cache.medicines as Medicine[], user.timezone))
+        .then(() => scheduleCareNudges(cache.medicines as Medicine[], user.timezone, locale))
         .then(refreshHealth);
     }, 400);
     return () => clearTimeout(timer);
-  }, [user, cache.medicines, rescheduleNow, refreshHealth]);
+  }, [user, cache.medicines, rescheduleNow, refreshHealth, locale]);
 
   // Ask for notification permission once there is something to remind about.
   // Nothing asked before: the only route was a button deep in Settings, so on
@@ -353,7 +360,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCache(nextCache);
 
       if (action === 'snooze' && snoozeMinutes !== undefined) {
-        await scheduleSnooze(doseId, dose.medicineName, snoozeMinutes);
+        await scheduleSnooze(doseId, dose.medicineName, snoozeMinutes, locale);
       } else {
         // Taken, skipped or undone: a pending follow-up would nag about a dose
         // that is already dealt with.
@@ -365,7 +372,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       void runSync();
       return dose;
     },
-    [runSync],
+    [runSync, locale],
   );
 
   const updateAppointment = useCallback(

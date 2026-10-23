@@ -15,6 +15,8 @@ import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import type { DoseStatus } from '@medtrack/shared';
 import { MIN_TOUCH, TABULAR, radius, spacing, type, useTheme, type Palette } from '../theme';
 import { Check, ChevronRight } from './icons';
+import { useT } from '../i18n/useT';
+import type { StringKey } from '../i18n';
 
 /* ── Text ────────────────────────────────────────────────────────────────── */
 
@@ -352,14 +354,6 @@ export function DaySegments({ statuses }: { statuses: DoseStatus[] }) {
 
 /* ── Schedule rail ───────────────────────────────────────────────────────── */
 
-const STATE_LABEL: Record<DoseStatus, string> = {
-  taken: 'Taken',
-  missed: 'Missed',
-  snoozed: 'Snoozed',
-  skipped: 'Skipped',
-  scheduled: 'Due',
-};
-
 export function RailRow({
   time,
   name,
@@ -386,6 +380,8 @@ export function RailRow({
   onPress?: () => void;
 }) {
   const c = useTheme();
+  const { t } = useT();
+  const stateText = t(`state_${status}` as StringKey);
 
   const dotFill =
     status === 'taken' ? c.ok
@@ -408,7 +404,7 @@ export function RailRow({
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={`${name} at ${time} — ${STATE_LABEL[status]}`}
+      accessibilityLabel={`${name} · ${time} — ${stateText}`}
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => ({
@@ -477,7 +473,7 @@ export function RailRow({
         <Check size={15} color={stateColour} />
       ) : (
         <Text style={[type.micro, { color: stateColour, textTransform: 'uppercase' }]}>
-          {STATE_LABEL[status]}
+          {stateText}
         </Text>
       )}
     </Pressable>

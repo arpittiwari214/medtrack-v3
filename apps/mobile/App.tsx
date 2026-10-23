@@ -16,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppProvider, useApp } from './src/context/AppContext';
 import { recordDelivery } from './src/notifications/health';
+import { useT } from './src/i18n/useT';
 import SignInScreen from './src/screens/SignInScreen';
 import TodayScreen from './src/screens/TodayScreen';
 import MedicinesScreen from './src/screens/MedicinesScreen';
@@ -29,6 +30,7 @@ const Tab = createBottomTabNavigator();
 
 function Tabs() {
   const c = useTheme();
+  const { t } = useT();
 
   return (
     <Tab.Navigator
@@ -49,27 +51,27 @@ function Tabs() {
       <Tab.Screen
         name="Today"
         component={TodayScreen}
-        options={{ tabBarIcon: ({ color }) => <Home size={22} color={color} /> }}
+        options={{ tabBarLabel: t('tab_today'), tabBarIcon: ({ color }) => <Home size={22} color={color} /> }}
       />
       <Tab.Screen
         name="Medicines"
         component={MedicinesScreen}
-        options={{ tabBarIcon: ({ color }) => <Pill size={22} color={color} /> }}
+        options={{ tabBarLabel: t('tab_medicines'), tabBarIcon: ({ color }) => <Pill size={22} color={color} /> }}
       />
       <Tab.Screen
         name="Insights"
         component={InsightsScreen}
-        options={{ tabBarIcon: ({ color }) => <Chart size={22} color={color} /> }}
+        options={{ tabBarLabel: t('tab_insights'), tabBarIcon: ({ color }) => <Chart size={22} color={color} /> }}
       />
       <Tab.Screen
         name="Visits"
         component={AppointmentsScreen}
-        options={{ tabBarIcon: ({ color }) => <Calendar size={22} color={color} /> }}
+        options={{ tabBarLabel: t('tab_visits'), tabBarIcon: ({ color }) => <Calendar size={22} color={color} /> }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ tabBarIcon: ({ color }) => <SettingsIcon size={22} color={color} /> }}
+        options={{ tabBarLabel: t('tab_settings'), tabBarIcon: ({ color }) => <SettingsIcon size={22} color={color} /> }}
       />
     </Tab.Navigator>
   );
@@ -77,6 +79,7 @@ function Tabs() {
 
 function Root() {
   const c = useTheme();
+  const { t } = useT();
   const { user, loading, actOnDose, setAnnounceDoseId } = useApp();
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
@@ -130,7 +133,7 @@ function Root() {
       >
         <Pill size={36} color={c.brand} />
         <ActivityIndicator color={c.brand} />
-        <Text style={[type.sm, { color: c.text2 }]}>Loading MedTrack…</Text>
+        <Text style={[type.sm, { color: c.text2 }]}>{t('loading')}</Text>
       </View>
     );
   }

@@ -17,7 +17,6 @@ import {
   addDays,
   byMedicine,
   dailySeries,
-  formatLocalDate,
   insights as deriveInsights,
   summarise,
   todayIn,
@@ -37,6 +36,8 @@ import {
   sharedStyles,
 } from '../components/ui';
 import { Chart as ChartIcon, Info } from '../components/icons';
+import { formatDate, type StringKey } from '../i18n';
+import { useT } from '../i18n/useT';
 
 const RANGES = [7, 30, 90] as const;
 
@@ -49,14 +50,15 @@ function deviceZone(): string {
 }
 
 /** Status band for a rate. Always rendered with its label, never colour alone. */
-function band(rate: number): { label: string; tone: 'ok' | 'warn' | 'danger' } {
-  if (rate >= 80) return { label: 'On track', tone: 'ok' };
-  if (rate >= 50) return { label: 'Slipping', tone: 'warn' };
-  return { label: 'Needs attention', tone: 'danger' };
+function band(rate: number): { label: StringKey; tone: 'ok' | 'warn' | 'danger' } {
+  if (rate >= 80) return { label: 'band_ok', tone: 'ok' };
+  if (rate >= 50) return { label: 'band_warn', tone: 'warn' };
+  return { label: 'band_danger', tone: 'danger' };
 }
 
 export default function InsightsScreen() {
   const c = useTheme();
+  const { t, locale } = useT();
   const { user, cache, syncing, refresh } = useApp();
   const [days, setDays] = useState<number>(30);
 
@@ -73,7 +75,7 @@ export default function InsightsScreen() {
   const summary = useMemo(() => summarise(scoped, context), [scoped, context]);
   const perMedicine = useMemo(() => byMedicine(scoped, context), [scoped, context]);
   const daily = useMemo(() => dailySeries(scoped, from, today), [scoped, from, today]);
-  const found = useMemo(() => deriveInsights(scoped, context), [scoped, context]);
+  const found = useMemo(() => deriveInsights(scoped, context, locale), [scoped, context, locale]);
 
   const resolved = summary.taken + summary.missed;
   const status = band(summary.ratePercent);
@@ -85,8 +87,8 @@ export default function InsightsScreen() {
       refreshControl={<RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={c.brand} />}
     >
       <ScreenHeader
-        eyebrow={`Last ${days} days`}
-        title="Insights"
+        eyebrow={t('last_days', { n: days })}
+        title={t('insights_title')}
         action={
           <View
             style={{
@@ -123,7 +125,7 @@ export default function InsightsScreen() {
                       { color: active ? c.text : c.text2, fontWeight: '600' },
                     ]}
                   >
-                    {range}d
+                    {t('range_days', { n: range })}
                   </Text>
                 </Pressable>
               );
@@ -135,16 +137,16 @@ export default function InsightsScreen() {
       {resolved === 0 ? (
         <EmptyState
           icon={(colour) => <ChartIcon size={22} color={colour} />}
-          title="Not enough history yet"
-          description="Once you have logged a few doses, this is where the patterns show up."
+          title={t('insights_empty_title')}
+          description={t('insights_empty_body')}
         />
       ) : (
         <View style={sharedStyles.stack}>
           {/* The one number the screen leads with. Exactly one hero per view. */}
           <Panel>
             <PanelHead
-              label="Doses taken"
-              aside={<Badge label={status.label} tone={status.tone} />}
+              label={t('doses_taken')}
+              aside={<Badge label={t(status.label)} tone={status.tone} />}
             />
             <PanelBody>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
@@ -156,17 +158,17 @@ export default function InsightsScreen() {
                 <Text style={[type.title, { color: c.text3 }]}>%</Text>
               </View>
               <Text style={[type.sm, { color: c.text2, marginTop: spacing.sm, lineHeight: 20 }]}>
-                {summary.taken} of {resolved} doses over {days} days.
-                {summary.streakDays > 0 ? ` Currently on a ${summary.streakDays}-day streak.` : ''}
+                {t('taken_of', { taken: summary.taken, total: resolved, days })}
+                {summary.streakDays > 0 ? t('streak_note', { n: summary.streakDays }) : ''}
               </Text>
             </PanelBody>
           </Panel>
 
           <MetricStrip
             items={[
-              { value: summary.streakDays, label: 'Streak' },
-              { value: summary.missed, label: 'Missed' },
-              { value: summary.skipped, label: 'Skipped' },
+              { value: summary.streakDays, label: t('metric_streak') },
+              { value: summary.missed, label: t('metric_missed') },
+              { value: summary.skipped, label: t('metric_skipped') },
             ]}
           />
 
@@ -180,10 +182,10 @@ export default function InsightsScreen() {
             </View>
           )}
 
-          <AdherenceChart daily={daily} from={from} to={today} />
+          <AdherenceChart t={t} locale={locale} daily={daily} from={from} to={today} />
 
           <Panel>
-            <PanelHead label="By medicine" />
+            <PanelHead label={t('by_medicine')} />
             <PanelBody>
               <View style={{ gap: spacing.lg }}>
                 {perMedicine.map((medicine) => {
@@ -198,7 +200,7 @@ export default function InsightsScreen() {
                           {medicine.medicineName}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                          <Badge label={level.label} tone={level.tone} />
+                          <Badge label={t(level.label)} tone={level.tone} />
                           <Text
                             style={[type.sm, TABULAR, { color: c.text, fontWeight: '700' }]}
                           >
@@ -211,7 +213,12 @@ export default function InsightsScreen() {
                           so state reads across the whole bar. */}
                       <View
                         accessibilityRole="progressbar"
-                        accessibilityLabel={`${medicine.medicineName}: ${medicine.ratePercent} percent taken, ${medicine.missed} missed of ${medicine.taken + medicine.missed}`}
+                        accessibilityLabel={t('a11y_med_rate', {
+                          name: medicine.medicineName,
+                          rate: medicine.ratePercent,
+                          missed: medicine.missed,
+                          total: medicine.taken + medicine.missed,
+                        })}
                         style={{
                           height: 6,
                           backgroundColor: c.surface3,
@@ -230,7 +237,7 @@ export default function InsightsScreen() {
                       </View>
 
                       <Text style={[type.xs, { color: c.text3, marginTop: 4 }]}>
-                        {medicine.taken} taken · {medicine.missed} missed
+                        {t('taken_missed', { taken: medicine.taken, missed: medicine.missed })}
                       </Text>
                     </View>
                   );
@@ -253,10 +260,14 @@ export default function InsightsScreen() {
  * plotted, and a one-swatch legend box would just restate it.
  */
 function AdherenceChart({
+  t,
+  locale,
   daily,
   from,
   to,
 }: {
+  t: ReturnType<typeof useT>['t'];
+  locale: ReturnType<typeof useT>['locale'];
   daily: DailyAdherencePoint[];
   from: string;
   to: string;
@@ -276,15 +287,20 @@ function AdherenceChart({
   return (
     <Panel>
       <PanelHead
-        label="Day by day"
+        label={t('day_by_day')}
         aside={
-          <Text style={[type.xs, TABULAR, { color: c.text2 }]}>{average}% average</Text>
+          <Text style={[type.xs, TABULAR, { color: c.text2 }]}>{t('average', { n: average })}</Text>
         }
       />
       <PanelBody>
         <View
           accessibilityRole="image"
-          accessibilityLabel={`Daily adherence from ${from} to ${to}, averaging ${average} percent across ${withData.length} days with scheduled doses.`}
+          accessibilityLabel={t('a11y_chart', {
+            from: formatDate(locale, from, 'long'),
+            to: formatDate(locale, to, 'long'),
+            average,
+            days: withData.length,
+          })}
           style={{ height: CHART_HEIGHT, position: 'relative' }}
         >
           {/* Recessive hairline gridlines at 50% and 100%. */}
@@ -330,12 +346,12 @@ function AdherenceChart({
         </View>
 
         <View style={[sharedStyles.rowBetween, { marginTop: spacing.sm }]}>
-          <Text style={[type.micro, TABULAR, { color: c.text3 }]}>{formatLocalDate(from)}</Text>
-          <Text style={[type.micro, TABULAR, { color: c.text3 }]}>{formatLocalDate(to)}</Text>
+          <Text style={[type.micro, TABULAR, { color: c.text3 }]}>{formatDate(locale, from, 'short')}</Text>
+          <Text style={[type.micro, TABULAR, { color: c.text3 }]}>{formatDate(locale, to, 'short')}</Text>
         </View>
 
         <Text style={[type.xs, { color: c.text3, marginTop: spacing.md, lineHeight: 18 }]}>
-          A flat tick marks a day with no doses scheduled — not a day you missed.
+          {t('flat_tick')}
         </Text>
       </PanelBody>
     </Panel>

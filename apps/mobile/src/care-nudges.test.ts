@@ -69,3 +69,11 @@ test('the check-in is three days out, at a sensible hour', () => {
 test('archived medicines are ignored', () => {
   assert.deepEqual(planCareNudges([medicine('a', 2, { archivedAt: '2026-10-10T00:00:00.000Z' })], IST, NOW), []);
 });
+
+test('nudges are written in the chosen language, with Western digits', () => {
+  const [refill, checkIn] = planCareNudges([medicine('a', 4)], IST, NOW, 'hi');
+  assert.equal(refill?.title, 'Med a और ख़रीदने का समय');
+  assert.match(refill?.body ?? '', /^लगभग 4 खुराक बचीं — .*\d.* तक चलेगी।$/);
+  assert.equal(checkIn?.identifier, CHECK_IN_ID);
+  assert.equal(checkIn?.title, 'कुछ दिनों से आप दिखे नहीं');
+});

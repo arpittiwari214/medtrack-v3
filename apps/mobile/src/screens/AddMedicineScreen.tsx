@@ -30,6 +30,8 @@ import { MIN_TOUCH, radius, spacing, type, useTheme } from '../theme';
 import { ActionPrimary, ActionSecondary, Banner, Panel, PanelBody, PanelHead } from '../components/ui';
 import { ColorSwatches, MedicinePhoto, SlotPicker } from '../components/recognition';
 import { VoiceRecorder } from '../components/voice';
+import { type Locale, type Params, type StringKey } from '../i18n';
+import { useT } from '../i18n/useT';
 import { AlertTriangle } from '../components/icons';
 
 function deviceZone(): string {
@@ -44,16 +46,23 @@ function deviceZone(): string {
  * A name the patient will recognise when none was typed — the server needs
  * one, and "White tablet for BP" is more useful to this patient than nothing.
  */
-function fallbackName(pillColor: MedicineColor | null, purpose: string, hasPhoto: boolean): string | null {
-  if (pillColor) return describeMedicine({ name: '', form: 'tablet', pillColor, purpose });
-  if (purpose.trim()) return `Medicine for ${purpose.trim()}`;
-  if (hasPhoto) return 'Medicine in the photo';
+function fallbackName(
+  pillColor: MedicineColor | null,
+  purpose: string,
+  hasPhoto: boolean,
+  locale: Locale,
+  t: (key: StringKey, params?: Params) => string,
+): string | null {
+  if (pillColor) return describeMedicine({ name: '', form: 'tablet', pillColor, purpose }, locale);
+  if (purpose.trim()) return t('name_fallback_purpose', { purpose: purpose.trim() });
+  if (hasPhoto) return t('name_fallback_photo');
   return null;
 }
 
 export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
   const c = useTheme();
   const { addMedicine, user } = useApp();
+  const { t, locale } = useT();
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
@@ -73,8 +82,8 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
-          'Camera not allowed',
-          'You can still choose a photo from your gallery, or skip the photo and pick the colours.',
+          t('camera_denied_title'),
+          t('camera_denied_body'),
         );
         return;
       }
@@ -98,9 +107,9 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
 
   async function save() {
     setError('');
-    const finalName = name.trim() || fallbackName(pillColor, purpose, photo !== null);
+    const finalName = name.trim() || fallbackName(pillColor, purpose, photo !== null, locale, t);
     if (!finalName) {
-      setError('Add a photo, a colour or a name, so you can recognise it later.');
+      setError(t('need_something'));
       return;
     }
 
@@ -121,7 +130,7 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
     });
 
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Please check the details.');
+      setError(parsed.error.issues[0]?.message ?? t('check_details'));
       return;
     }
 
@@ -130,7 +139,7 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
       await addMedicine(parsed.data, { photo, voice });
       onDone();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not save this medicine.');
+      setError(caught instanceof Error ? caught.message : t('save_failed'));
     } finally {
       setBusy(false);
     }
@@ -157,13 +166,13 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={[type.title, { color: c.text }]}>Add a medicine</Text>
+          <Text style={[type.title, { color: c.text }]}>{t('add_title')}</Text>
           <Pressable
             accessibilityRole="button"
             onPress={onDone}
             style={{ minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: spacing.sm }}
           >
-            <Text style={[type.base, { color: c.text2 }]}>Cancel</Text>
+            <Text style={[type.base, { color: c.text2 }]}>{t('cancel')}</Text>
           </Pressable>
         </View>
 
@@ -174,114 +183,105 @@ export default function AddMedicineScreen({ onDone }: { onDone: () => void }) {
         )}
 
         <Panel>
-          <PanelHead label="1 · Photo of the strip" />
+          <PanelHead label={t('step_photo')} />
           <PanelBody style={{ gap: spacing.md }}>
             <View style={{ alignItems: 'center' }}>
               <MedicinePhoto uri={photo ?? undefined} color={pillColor} size={160} />
             </View>
-            <ActionPrimary label={photo ? 'Take it again' : 'Take a photo'} onPress={() => void pick('camera')} />
-            <ActionSecondary label="Choose from gallery" onPress={() => void pick('library')} />
-            <Text style={[type.xs, { color: c.text3, lineHeight: 18 }]}>
-              The photo stays on this phone. It helps you tell look-alike medicines apart.
-            </Text>
+            <ActionPrimary label={t(photo ? 'retake_photo' : 'take_photo')} onPress={() => void pick('camera')} />
+            <ActionSecondary label={t('choose_gallery')} onPress={() => void pick('library')} />
+            <Text style={[type.xs, { color: c.text3, lineHeight: 18 }]}>{t('photo_note')}</Text>
           </PanelBody>
         </Panel>
 
         <Panel>
-          <PanelHead label="Voice note (optional)" />
+          <PanelHead label={t('step_voice')} />
           <PanelBody style={{ gap: spacing.md }}>
-            <Text style={[type.sm, { color: c.text2, lineHeight: 20 }]}>
-              Say what it is in your own words — for example, “the white one for BP, after breakfast”.
-              It plays when you tap the speaker. Family can record it for you.
-            </Text>
+            <Text style={[type.sm, { color: c.text2, lineHeight: 20 }]}>{t('voice_help')}</Text>
             <VoiceRecorder value={voice} onChange={setVoice} />
           </PanelBody>
         </Panel>
 
         <Panel>
-          <PanelHead label="2 · How does it look?" />
+          <PanelHead label={t('step_look')} />
           <PanelBody style={{ gap: spacing.lg }}>
-            <ColorSwatches label="Tablet colour" value={pillColor} onChange={setPillColor} />
-            <ColorSwatches label="Strip colour" value={stripColor} onChange={setStripColor} />
+            <ColorSwatches label={t('tablet_colour')} value={pillColor} onChange={setPillColor} />
+            <ColorSwatches label={t('strip_colour')} value={stripColor} onChange={setStripColor} />
           </PanelBody>
         </Panel>
 
         <Panel>
-          <PanelHead label="3 · What is it for?" />
+          <PanelHead label={t('step_purpose')} />
           <PanelBody style={{ gap: spacing.md }}>
             <TextInput
               style={inputStyle}
               value={purpose}
               onChangeText={setPurpose}
               maxLength={40}
-              placeholder="BP, sugar, thyroid…"
+              placeholder={t('purpose_placeholder')}
               placeholderTextColor={c.text3}
-              accessibilityLabel="What is it for"
+              accessibilityLabel={t('step_purpose')}
             />
             <Text style={[type.sm, { color: c.text, fontWeight: '600', marginTop: spacing.sm }]}>
-              Name on the strip (optional)
+              {t('name_optional')}
             </Text>
             <TextInput
               style={inputStyle}
               value={name}
               onChangeText={setName}
               maxLength={200}
-              placeholder="e.g. Telma 40"
+              placeholder={t('name_placeholder')}
               placeholderTextColor={c.text3}
-              accessibilityLabel="Name on the strip"
+              accessibilityLabel={t('name_optional')}
             />
-            <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>Strength (optional)</Text>
+            <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{t('strength_optional')}</Text>
             <TextInput
               style={inputStyle}
               value={strength}
               onChangeText={setStrength}
               maxLength={100}
-              placeholder="e.g. 40 mg"
+              placeholder={t('strength_placeholder')}
               placeholderTextColor={c.text3}
-              accessibilityLabel="Strength"
+              accessibilityLabel={t('strength_optional')}
             />
           </PanelBody>
         </Panel>
 
         <Panel>
-          <PanelHead label="4 · When" />
+          <PanelHead label={t('step_when')} />
           <PanelBody>
             <SlotPicker times={times} onChange={setTimes} />
           </PanelBody>
         </Panel>
 
         <Panel>
-          <PanelHead label="5 · More (optional)" />
+          <PanelHead label={t('step_more')} />
           <PanelBody style={{ gap: spacing.lg }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
               <View style={{ flex: 1 }}>
-                <Text style={[type.base, { color: c.text, fontWeight: '600' }]}>This one is important</Text>
-                <Text style={[type.xs, { color: c.text2, lineHeight: 18 }]}>
-                  Your caregivers are told the first time it is missed.
-                </Text>
+                <Text style={[type.base, { color: c.text, fontWeight: '600' }]}>{t('important_toggle')}</Text>
+                <Text style={[type.xs, { color: c.text2, lineHeight: 18 }]}>{t('important_help')}</Text>
               </View>
-              <Switch value={isCritical} onValueChange={setIsCritical} accessibilityLabel="This one is important" />
+              <Switch value={isCritical} onValueChange={setIsCritical} accessibilityLabel={t('important_toggle')} />
             </View>
 
             <View style={{ gap: spacing.sm }}>
-              <Text style={[type.base, { color: c.text, fontWeight: '600' }]}>How many tablets do you have?</Text>
+              <Text style={[type.base, { color: c.text, fontWeight: '600' }]}>{t('tablets_count')}</Text>
               <TextInput
                 style={inputStyle}
                 value={units}
                 onChangeText={(text) => setUnits(text.replace(/[^0-9]/g, ''))}
                 keyboardType="number-pad"
-                placeholder="e.g. 30"
+                placeholder={t('tablets_placeholder')}
                 placeholderTextColor={c.text3}
-                accessibilityLabel="How many tablets you have"
+                accessibilityLabel={t('tablets_count')}
               />
-              <Text style={[type.xs, { color: c.text2, lineHeight: 18 }]}>
-                We will tell you before you run out.
-              </Text>
+              <Text style={[type.xs, { color: c.text2, lineHeight: 18 }]}>{t('tablets_help')}</Text>
             </View>
           </PanelBody>
         </Panel>
 
-        <ActionPrimary label={busy ? 'Saving…' : 'Save medicine'} onPress={() => void save()} disabled={busy} />
+        <ActionPrimary label={t(busy ? 'saving' : 'save_medicine')} onPress={() => void save()} disabled={busy} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

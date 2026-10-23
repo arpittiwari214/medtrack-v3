@@ -26,13 +26,14 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import {
   describeMedicine,
-  formatTime12h,
+  formatTimeFor,
   nextOccurrencesForAll,
   type Medicine,
   type PlannedDose,
 } from '@medtrack/shared';
 import { DOSE_ID_PREFIX, planReminders, type ScheduledReminder } from '../reminder-plan';
 import { planCareNudges } from '../care-nudges';
+import { deviceLocale, translate, type Locale } from '../i18n';
 
 /**
  * How many dose reminders to hand the OS at once.
@@ -121,13 +122,17 @@ export async function notificationPermission(): Promise<'granted' | 'denied' | '
   return status.canAskAgain ? 'undetermined' : 'denied';
 }
 
-/** Set up Android channels. No-op elsewhere. */
-export async function configureChannels(): Promise<void> {
+/**
+ * Set up Android channels. No-op elsewhere. Re-run on a language change: a
+ * channel's name and description can be updated, only importance and sound
+ * are fixed.
+ */
+export async function configureChannels(locale: Locale = deviceLocale()): Promise<void> {
   if (Platform.OS !== 'android') return;
 
   await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL, {
-    name: 'Dose reminders',
-    description: 'Reminders to take your medicine',
+    name: translate(locale, 'ch_reminders'),
+    description: translate(locale, 'ch_reminders_desc'),
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#0891a8',
@@ -137,8 +142,8 @@ export async function configureChannels(): Promise<void> {
   });
 
   await Notifications.setNotificationChannelAsync(ALERT_CHANNEL, {
-    name: 'Important alerts',
-    description: 'Caregiver alerts and emergencies',
+    name: translate(locale, 'ch_alerts'),
+    description: translate(locale, 'ch_alerts_desc'),
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400],
     lightColor: '#c0342f',
@@ -159,6 +164,7 @@ export interface RescheduleOptions {
    * inexact until they are re-created.
    */
   force?: boolean;
+  locale?: Locale;
 }
 
 /**
@@ -174,6 +180,7 @@ export async function rescheduleReminders(
   if (!permission.granted) return 0;
 
   const resolved = options.resolvedDoseIds ?? new Set<string>();
+  const locale = options.locale ?? 'en';
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
 
   const existing: ScheduledReminder[] = scheduled
@@ -185,7 +192,7 @@ export async function rescheduleReminders(
 
   const byId = new Map(medicines.map((medicine) => [medicine.id, medicine]));
   const labelOf = (dose: PlannedDose) =>
-    describeMedicine(byId.get(dose.medicineId) ?? { name: dose.medicineName });
+    describeMedicine(byId.get(dose.medicineId) ?? { name: dose.medicineName }, locale);
 
   const plan = planReminders({
     // Over-fetch by the resolved count so taken doses do not eat the cap.
@@ -195,7 +202,8 @@ export async function rescheduleReminders(
     nowMs: Date.now(),
     horizonDays: HORIZON_DAYS,
     max: MAX_SCHEDULED,
-    contentVersion: CONTENT_VERSION,
+    // The language is part of the wording, so switching it replaces every reminder.
+    contentVersion: `${CONTENT_VERSION}:${locale}`,
     force: options.force ?? false,
     labelOf,
   });
@@ -209,7 +217,7 @@ export async function rescheduleReminders(
     try {
       await Notifications.scheduleNotificationAsync({
         identifier: reminder.identifier,
-        content: buildContent(reminder.dose, reminder.fingerprint, labelOf(reminder.dose)),
+        content: buildContent(reminder.dose, reminder.fingerprint, labelOf(reminder.dose), locale),
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: new Date(reminder.dose.scheduledAt),
@@ -234,14 +242,15 @@ function buildContent(
   dose: PlannedDose,
   fingerprint: string,
   label: string,
+  locale: Locale,
 ): Notifications.NotificationContentInput {
   const name = [dose.medicineName, dose.medicineStrength].filter(Boolean).join(' ');
-  const due = `due at ${formatTime12h(dose.localTime)}`;
+  const time = formatTimeFor(dose.localTime, locale);
   const recognisable = label !== dose.medicineName;
 
   return {
-    title: recognisable ? label : 'Time to take your medicine',
-    body: dose.isCritical ? `${name} — ${due}. This one matters.` : `${name} — ${due}.`,
+    title: recognisable ? label : translate(locale, 'n_title'),
+    body: translate(locale, dose.isCritical ? 'n_body_critical' : 'n_body', { name, time }),
     sound: true,
     priority: Notifications.AndroidNotificationPriority.MAX,
     // Carried back when the user taps, so the app can act on the exact dose,
@@ -284,16 +293,16 @@ export async function cancelAllDoseReminders(): Promise<void> {
  * `Notifications.registerTaskAsync` (expo-task-manager), which must be tested
  * on real MIUI / ColorOS / One UI devices before it can be trusted.
  */
-export async function registerNotificationActions(): Promise<void> {
+export async function registerNotificationActions(locale: Locale): Promise<void> {
   await Notifications.setNotificationCategoryAsync(DOSE_CATEGORY, [
     {
       identifier: 'TAKEN',
-      buttonTitle: 'Taken',
+      buttonTitle: translate(locale, 'n_action_taken'),
       options: { opensAppToForeground: true },
     },
     {
       identifier: 'SNOOZE',
-      buttonTitle: 'Snooze 10 min',
+      buttonTitle: translate(locale, 'n_action_snooze'),
       options: { opensAppToForeground: true },
     },
   ]);
@@ -311,6 +320,7 @@ export async function scheduleSnooze(
   doseId: string,
   medicineName: string,
   minutes: number,
+  locale: Locale,
 ): Promise<void> {
   const identifier = SNOOZE_ID_PREFIX + doseId;
   await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => undefined);
@@ -318,8 +328,8 @@ export async function scheduleSnooze(
   await Notifications.scheduleNotificationAsync({
     identifier,
     content: {
-      title: 'Reminder',
-      body: `${medicineName} — you asked to be reminded again.`,
+      title: translate(locale, 'n_snooze_title'),
+      body: translate(locale, 'n_snooze_body', { name: medicineName }),
       sound: true,
       priority: Notifications.AndroidNotificationPriority.MAX,
       data: { tag: SNOOZE_TAG, doseId, scheduledAt: new Date(Date.now() + minutes * 60_000).toISOString() },
@@ -344,7 +354,11 @@ export async function cancelSnooze(doseId: string): Promise<void> {
  * Replace the buy-more and check-in nudges (see care-nudges.ts). At most four,
  * so a plain cancel-and-recreate is fine here.
  */
-export async function scheduleCareNudges(medicines: Medicine[], timezone: string): Promise<void> {
+export async function scheduleCareNudges(
+  medicines: Medicine[],
+  timezone: string,
+  locale: Locale,
+): Promise<void> {
   const permission = await Notifications.getPermissionsAsync();
   if (!permission.granted) return;
 
@@ -355,7 +369,7 @@ export async function scheduleCareNudges(medicines: Medicine[], timezone: string
       .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)),
   );
 
-  for (const nudge of planCareNudges(medicines, timezone, new Date())) {
+  for (const nudge of planCareNudges(medicines, timezone, new Date(), locale)) {
     await Notifications.scheduleNotificationAsync({
       identifier: nudge.identifier,
       content: { title: nudge.title, body: nudge.body, sound: true, data: { tag: CARE_TAG } },

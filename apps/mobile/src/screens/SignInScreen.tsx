@@ -14,10 +14,12 @@ import { useApp } from '../context/AppContext';
 import { MIN_TOUCH, radius, spacing, type, useTheme } from '../theme';
 import { Banner } from '../components/ui';
 import { AlertTriangle, Pill } from '../components/icons';
+import { useT } from '../i18n/useT';
 
 export default function SignInScreen() {
   const c = useTheme();
   const { signIn } = useApp();
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,9 +32,9 @@ export default function SignInScreen() {
       await signIn(email.trim(), password);
     } catch (caught) {
       if (caught instanceof OfflineError) {
-        setError('No connection. You need to be online to sign in the first time.');
+        setError(t('sign_in_offline'));
       } else {
-        setError(caught instanceof ApiError ? caught.message : 'Something went wrong.');
+        setError(caught instanceof ApiError ? caught.message : t('sign_in_failed'));
       }
     } finally {
       setBusy(false);
@@ -58,9 +60,9 @@ export default function SignInScreen() {
             <Pill size={22} color={c.brand} />
             <Text style={[type.lg, { color: c.text }]}>MedTrack</Text>
           </View>
-          <Text style={[type.display, { color: c.text, marginTop: spacing.lg }]}>Welcome back</Text>
+          <Text style={[type.display, { color: c.text, marginTop: spacing.lg }]}>{t('welcome_back')}</Text>
           <Text style={[type.sm, { color: c.text2, marginTop: spacing.sm }]}>
-            Sign in to see today’s doses.
+            {t('sign_in_sub')}
           </Text>
         </View>
 
@@ -71,7 +73,7 @@ export default function SignInScreen() {
         )}
 
         <View style={{ gap: spacing.sm }}>
-          <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>Email address</Text>
+          <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{t('email')}</Text>
           <TextInput
             style={{
               minHeight: MIN_TOUCH + 4,
@@ -95,7 +97,7 @@ export default function SignInScreen() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>Password</Text>
+          <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{t('password')}</Text>
           <TextInput
             style={{
               minHeight: MIN_TOUCH + 4,
@@ -136,7 +138,7 @@ export default function SignInScreen() {
           {busy ? (
             <ActivityIndicator color={c.onBrand} />
           ) : (
-            <Text style={{ ...type.base, fontWeight: '700', color: c.onBrand }}>Sign in</Text>
+            <Text style={{ ...type.base, fontWeight: '700', color: c.onBrand }}>{t('sign_in')}</Text>
           )}
         </Pressable>
 
@@ -144,7 +146,7 @@ export default function SignInScreen() {
             consent flow and the legal documents, and reproducing those in a
             native screen invites the two drifting apart. */}
         <Text style={[type.xs, { color: c.text3, textAlign: 'center', marginTop: spacing.md }]}>
-          New to MedTrack? Create your account at medtrack.app, then sign in here.
+          {t('new_account_note')}
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

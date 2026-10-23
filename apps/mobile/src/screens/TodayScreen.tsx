@@ -15,8 +15,7 @@ import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-
 import {
   describeMedicine,
   dosesRemainingInStock,
-  formatLocalDate,
-  formatTime12h,
+  formatTimeFor,
   isLowStock,
   projectedRunOutDate,
   splitToday,
@@ -49,6 +48,8 @@ import { AlertTriangle, Calendar, Check, Clock, Package, Pill, SkipForward } fro
 import { ReminderAlertBanner } from '../components/ReminderHealth';
 import { ColorDot, MedicinePhoto } from '../components/recognition';
 import { SayButton, useSayMedicine } from '../components/voice';
+import { dosesLeft, formatDate, type StringKey } from '../i18n';
+import { useT } from '../i18n/useT';
 
 function deviceZone(): string {
   try {
@@ -62,7 +63,8 @@ export default function TodayScreen() {
   const c = useTheme();
   const { user, cache, syncing, refresh, actOnDose, photos, voices, prefs, announceDoseId, setAnnounceDoseId } =
     useApp();
-  const say = useSayMedicine();
+  const { t, locale } = useT();
+  const say = useSayMedicine(locale === 'hi' ? 'hi-IN' : 'en-IN');
 
   const medicinesById = useMemo(
     () => new Map((cache.medicines as Medicine[]).map((medicine) => [medicine.id, medicine])),
@@ -101,8 +103,8 @@ export default function TodayScreen() {
   /** Play the patient's voice label, or read the description aloud. */
   const sayDose = (dose: DoseEvent) => {
     const medicine = medicinesById.get(dose.medicineId);
-    const headline = medicine ? describeMedicine(medicine) : dose.medicineName;
-    say(voices[dose.medicineId], `${headline}. ${formatTime12h(dose.localTime)}.`);
+    const headline = medicine ? describeMedicine(medicine, locale) : dose.medicineName;
+    say(voices[dose.medicineId], `${headline}. ${formatTimeFor(dose.localTime, locale)}.`);
   };
 
   // Opened from a reminder: read that dose aloud once, if the patient asked for it.
@@ -138,10 +140,10 @@ export default function TodayScreen() {
           }}
         >
           <Text style={[type.micro, TABULAR, { color: c.text3, textTransform: 'uppercase' }]}>
-            {longDate(today)}
+            {formatDate(locale, today, 'long')}
           </Text>
           <Text style={[type.title, { color: c.text, marginTop: 4 }]}>
-            {greeting()}, {firstName}
+            {t(greetingKey(), { name: firstName })}
           </Text>
         </View>
 
@@ -151,16 +153,14 @@ export default function TodayScreen() {
           <ReminderAlertBanner />
 
           {cache.syncedAt === null && (
-            <Banner tone="info">
-              Working offline. Your changes are saved and sync when you reconnect.
-            </Banner>
+            <Banner tone="info">{t('offline_banner')}</Banner>
           )}
 
           {total === 0 ? (
             <EmptyState
               icon={(colour) => <Pill size={22} color={colour} />}
-              title="Nothing scheduled today"
-              description="Open Medicines and tap Add — a photo of the strip is enough."
+              title={t('today_empty_title')}
+              description={t('today_empty_body')}
             />
           ) : focus ? (
             <NextDose
@@ -175,8 +175,8 @@ export default function TodayScreen() {
           ) : (
             <EmptyState
               icon={(colour) => <Check size={22} color={colour} />}
-              title="All done for today"
-              description={`${taken.length} of ${total} doses taken.`}
+              title={t('today_done_title')}
+              description={t('today_done_body', { taken: taken.length, total })}
             />
           )}
 
@@ -185,7 +185,7 @@ export default function TodayScreen() {
           {total > 0 && (
             <>
               <View style={[sharedStyles.row, { marginTop: spacing.sm }]}>
-                <Micro>Today</Micro>
+                <Micro>{t('today_label')}</Micro>
                 <DaySegments statuses={ordered.map((d) => d.status)} />
                 <Text style={[type.xs, TABULAR, { color: c.text2, fontWeight: '700' }]}>
                   {done}/{total}
@@ -194,19 +194,19 @@ export default function TodayScreen() {
 
               <MetricStrip
                 items={[
-                  { value: `${summary.ratePercent}%`, label: '30 days' },
-                  { value: summary.streakDays, label: 'Streak' },
-                  { value: summary.missed, label: 'Missed' },
+                  { value: `${summary.ratePercent}%`, label: t('metric_30_days') },
+                  { value: summary.streakDays, label: t('metric_streak') },
+                  { value: summary.missed, label: t('metric_missed') },
                 ]}
               />
 
-              <SectionHead title="Schedule" />
+              <SectionHead title={t('schedule')} />
 
               <View>
                 {ordered.map((dose, index) => (
                   <RailRow
                     key={dose.id}
-                    time={formatTime12h(dose.localTime)}
+                    time={formatTimeFor(dose.localTime, locale)}
                     name={dose.medicineName}
                     strength={dose.medicineStrength}
                     purpose={medicinesById.get(dose.medicineId)?.purpose}
@@ -249,9 +249,9 @@ export default function TodayScreen() {
             }}
             onPress={(event) => event.stopPropagation()}
           >
-            <Text style={[type.lg, { color: c.text }]}>Remind me again in…</Text>
+            <Text style={[type.lg, { color: c.text }]}>{t('snooze_title')}</Text>
             <Text style={[type.sm, { color: c.text2, marginBottom: spacing.sm }]}>
-              The dose stays on today’s schedule either way.
+              {t('snooze_body')}
             </Text>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
@@ -275,7 +275,7 @@ export default function TodayScreen() {
                   })}
                 >
                   <Text style={[type.base, TABULAR, { color: c.text, fontWeight: '700' }]}>
-                    {minutes} min
+                    {t('minutes', { n: minutes })}
                   </Text>
                 </Pressable>
               ))}
@@ -285,7 +285,7 @@ export default function TodayScreen() {
               onPress={() => setSnoozeTarget(null)}
               style={{ minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text style={[type.sm, { color: c.text2 }]}>Cancel</Text>
+              <Text style={[type.sm, { color: c.text2 }]}>{t('cancel')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -314,19 +314,20 @@ function NextDose({
   onSkip: () => void;
 }) {
   const c = useTheme();
+  const { t, locale } = useT();
   const overdue = dose.status === 'missed';
   // A scheduled dose already past its time is not "next" — it is due now.
   const pastDue = !overdue && new Date(dose.scheduledAt).getTime() < Date.now();
-  const headline = medicine ? describeMedicine(medicine) : dose.medicineName;
+  const headline = medicine ? describeMedicine(medicine, locale) : dose.medicineName;
   const showName = headline !== dose.medicineName;
 
   return (
     <Panel critical={dose.isCritical}>
       <PanelHead
-        label={overdue ? 'Overdue' : pastDue ? 'Due now' : 'Next dose'}
+        label={t(overdue ? 'overdue' : pastDue ? 'due_now' : 'next_dose')}
         aside={
           <Text style={[type.xs, TABULAR, { color: c.text2, fontWeight: '600' }]}>
-            {relativeTo(dose.scheduledAt)}
+            {relativeTo(dose.scheduledAt, t)}
           </Text>
         }
       />
@@ -340,22 +341,22 @@ function NextDose({
               {headline}
             </Text>
             <Text style={[type.sm, TABULAR, { color: c.text2, marginTop: 4 }]}>
-              {[showName ? dose.medicineName : null, dose.medicineStrength || null, formatTime12h(dose.localTime)]
+              {[showName ? dose.medicineName : null, dose.medicineStrength || null, formatTimeFor(dose.localTime, locale)]
                 .filter(Boolean)
                 .join(' · ')}
-              {dose.isCritical ? ' · Important' : ''}
+              {dose.isCritical ? ` · ${t('important')}` : ''}
             </Text>
           </View>
         </View>
 
         <View style={{ marginTop: spacing.lg }}>
-          <SayButton onPress={onSay} />
+          <SayButton onPress={onSay} label={t('hear_it')} />
         </View>
 
         {overdue && (
           <View style={{ marginTop: spacing.lg }}>
             <Banner tone="warn" icon={<AlertTriangle size={16} color={c.warnInk} />}>
-              This was due earlier. You can still record it if you took it.
+              {t('overdue_note')}
             </Banner>
           </View>
         )}
@@ -365,19 +366,19 @@ function NextDose({
           were the same size, so "Skip" competed with "Taken". */}
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm }}>
         <ActionPrimary
-          label="Mark as taken"
+          label={t('mark_taken')}
           icon={(colour) => <Check size={20} color={colour} />}
           onPress={onTake}
         />
         <View style={sharedStyles.split}>
           <ActionSecondary
-            label="Snooze"
+            label={t('snooze')}
             icon={(colour) => <Clock size={16} color={colour} />}
             onPress={onSnooze}
             style={{ flex: 1 }}
           />
           <ActionSecondary
-            label="Skip"
+            label={t('skip')}
             icon={(colour) => <SkipForward size={16} color={colour} />}
             onPress={onSkip}
             style={{ flex: 1 }}
@@ -400,12 +401,18 @@ function NextDose({
  */
 function CarePanel({ medicines, appointments }: { medicines: Medicine[]; appointments: Appointment[] }) {
   const c = useTheme();
+  const { t, locale } = useT();
   const navigation = useNavigation<{ navigate: (screen: string) => void }>();
 
   const running = medicines
     .filter((medicine) => !medicine.archivedAt && isLowStock(medicine))
-    .map((medicine) => ({ medicine, runOut: projectedRunOutDate(medicine) }))
-    .sort((a, b) => (a.runOut ?? '9999').localeCompare(b.runOut ?? '9999'))
+    .map((medicine) => ({
+      medicine,
+      runOut: projectedRunOutDate(medicine),
+      left: dosesRemainingInStock(medicine) ?? 0,
+    }))
+    // Run-out is a date, so ties go to whichever has fewer doses left.
+    .sort((a, b) => (a.runOut ?? '9999').localeCompare(b.runOut ?? '9999') || a.left - b.left)
     .slice(0, 3);
 
   const now = Date.now();
@@ -417,10 +424,9 @@ function CarePanel({ medicines, appointments }: { medicines: Medicine[]; appoint
 
   return (
     <Panel>
-      <PanelHead label="Supply and visits" />
+      <PanelHead label={t('care_title')} />
       <View>
-        {running.map(({ medicine, runOut }) => {
-          const left = dosesRemainingInStock(medicine) ?? 0;
+        {running.map(({ medicine, runOut, left }) => {
           return (
             <Pressable
               key={medicine.id}
@@ -447,11 +453,13 @@ function CarePanel({ medicines, appointments }: { medicines: Medicine[]; appoint
                   </Text>
                 </View>
                 <Text style={[type.xs, { color: c.text2, marginTop: 2 }]}>
-                  {left} {left === 1 ? 'dose' : 'doses'} left
-                  {runOut ? ` · runs out around ${formatLocalDate(runOut)}` : ''}
+                  {dosesLeft(locale, left)}
+                  {runOut ? ` · ${t('runs_out_around', { date: formatDate(locale, runOut, 'short') })}` : ''}
                 </Text>
               </View>
-              <Text style={[type.micro, { color: c.warnInk, textTransform: 'uppercase' }]}>Buy more</Text>
+              <Text style={[type.micro, { color: c.warnInk, textTransform: 'uppercase' }]}>
+                {t('buy_more')}
+              </Text>
             </Pressable>
           );
         })}
@@ -472,12 +480,12 @@ function CarePanel({ medicines, appointments }: { medicines: Medicine[]; appoint
           <Calendar size={18} color={c.text2} />
           <View style={{ flex: 1 }}>
             <Text style={[type.base, { color: c.text, fontWeight: '600' }]} numberOfLines={1}>
-              {nextVisit ? nextVisit.title : 'No visit booked'}
+              {nextVisit ? nextVisit.title : t('no_visit')}
             </Text>
             <Text style={[type.xs, TABULAR, { color: c.text2, marginTop: 2 }]}>
               {nextVisit
-                ? `${formatLocalDate(nextVisit.localDate)} · ${formatTime12h(nextVisit.localTime)}${nextVisit.requiresFasting ? ' · fasting' : ''}`
-                : 'Add your next check-up and we will remind you the day before.'}
+                ? `${formatDate(locale, nextVisit.localDate, 'short')} · ${formatTimeFor(nextVisit.localTime, locale)}${nextVisit.requiresFasting ? ` · ${t('fasting')}` : ''}`
+                : t('no_visit_body')}
             </Text>
           </View>
         </Pressable>
@@ -486,30 +494,22 @@ function CarePanel({ medicines, appointments }: { medicines: Medicine[]; appoint
   );
 }
 
-function greeting(): string {
+function greetingKey(): StringKey {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function longDate(localDate: string): string {
-  return new Date(`${localDate}T00:00:00Z`).toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  });
+  if (hour < 12) return 'greet_morning';
+  if (hour < 17) return 'greet_afternoon';
+  return 'greet_evening';
 }
 
 /** A duration is easier to act on than a clock time. */
-function relativeTo(instant: string): string {
+function relativeTo(instant: string, t: ReturnType<typeof useT>['t']): string {
   const deltaMinutes = Math.round((new Date(instant).getTime() - Date.now()) / 60_000);
   const abs = Math.abs(deltaMinutes);
-  if (abs < 1) return 'now';
+  if (abs < 1) return t('rel_now');
 
-  const hours = Math.floor(abs / 60);
-  const minutes = abs % 60;
-  const span = hours > 0 ? `${hours} h${minutes ? ` ${minutes} m` : ''}` : `${minutes} min`;
-  return deltaMinutes > 0 ? `in ${span}` : `${span} ago`;
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  const span =
+    h > 0 ? t(m ? 'span_hours_minutes' : 'span_hours', { h, m }) : t('span_minutes', { m });
+  return t(deltaMinutes > 0 ? 'rel_in' : 'rel_ago', { span });
 }

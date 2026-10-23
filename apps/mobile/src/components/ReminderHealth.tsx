@@ -22,6 +22,8 @@ import type { ReminderHealth } from '../notifications/health';
 import { radius, spacing, type, useTheme } from '../theme';
 import { ActionPrimary, ActionSecondary, Banner, Panel, PanelBody, PanelHead } from './ui';
 import { AlertTriangle, Check, ChevronRight } from './icons';
+import { formatDate, type Params, type StringKey } from '../i18n';
+import { useT } from '../i18n/useT';
 
 interface ProblemCopy {
   headline: string;
@@ -29,39 +31,32 @@ interface ProblemCopy {
   fixLabel: string;
 }
 
-function copyFor(problem: ReminderProblem, health: ReminderHealth): ProblemCopy {
+type T = (key: StringKey, params?: Params) => string;
+
+function copyFor(problem: ReminderProblem, health: ReminderHealth, t: T): ProblemCopy {
   switch (problem) {
     case 'notifications_off':
       return {
-        headline: 'Notifications are off',
-        detail: 'MedTrack cannot remind you until notifications are allowed.',
-        fixLabel: 'Turn on notifications',
+        headline: t('p_notifications_h'),
+        detail: t('p_notifications_d'),
+        fixLabel: t('p_notifications_f'),
       };
     case 'exact_alarms_off':
-      return {
-        headline: 'Reminders may come late',
-        detail:
-          'Your phone is set to deliver reminders "roughly on time", which can mean hours late. Allow exact reminders to fix this.',
-        fixLabel: 'Allow exact reminders',
-      };
+      return { headline: t('p_exact_h'), detail: t('p_exact_d'), fixLabel: t('p_exact_f') };
     case 'arriving_late':
       return {
-        headline: 'Recent reminders arrived late',
-        detail: `They came about ${health.delivery.medianLateMinutes ?? '?'} minutes after the dose time. Your phone's battery settings are the usual cause.`,
-        fixLabel: 'Fix battery settings',
+        headline: t('p_late_h'),
+        detail: t('p_late_d', { n: health.delivery.medianLateMinutes ?? '?' }),
+        fixLabel: t('p_battery_f'),
       };
     case 'battery_restricted':
       return {
-        headline: 'Battery saver can stop reminders',
-        detail: `${health.vendor.label} phones often close apps in the background. Allow MedTrack to run so reminders still ring.`,
-        fixLabel: 'Fix battery settings',
+        headline: t('p_battery_h'),
+        detail: t('p_battery_d', { vendor: health.vendor.label }),
+        fixLabel: t('p_battery_f'),
       };
     case 'nothing_scheduled':
-      return {
-        headline: 'No reminders are set',
-        detail: 'Your medicines have no upcoming reminders on this phone.',
-        fixLabel: 'Set up reminders',
-      };
+      return { headline: t('p_none_h'), detail: t('p_none_d'), fixLabel: t('p_none_f') };
   }
 }
 
@@ -91,16 +86,17 @@ async function fix(problem: ReminderProblem, health: ReminderHealth, reschedule:
 export function ReminderAlertBanner() {
   const c = useTheme();
   const { health } = useApp();
+  const { t } = useT();
   const navigation = useNavigation<{ navigate: (screen: string) => void }>();
 
   const first = health?.problems[0];
   if (!health || !first) return null;
-  const copy = copyFor(first, health);
+  const copy = copyFor(first, health, t);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${copy.headline}. ${copy.detail} Open settings to fix.`}
+      accessibilityLabel={`${copy.headline}. ${copy.detail}`}
       onPress={() => navigation.navigate('Settings')}
       style={({ pressed }) => ({
         flexDirection: 'row',
@@ -120,7 +116,7 @@ export function ReminderAlertBanner() {
           {copy.detail}
         </Text>
       </View>
-      <Text style={[type.sm, { color: c.dangerInk, fontWeight: '700' }]}>Fix</Text>
+      <Text style={[type.sm, { color: c.dangerInk, fontWeight: '700' }]}>{t('rh_fix')}</Text>
       <ChevronRight size={16} color={c.dangerInk} />
     </Pressable>
   );
@@ -130,6 +126,7 @@ export function ReminderAlertBanner() {
 export function ReminderHealthPanel() {
   const c = useTheme();
   const { health, rescheduleNow, refreshHealth } = useApp();
+  const { t, locale } = useT();
   const [showSteps, setShowSteps] = useState(false);
 
   if (!health) return null;
@@ -145,16 +142,16 @@ export function ReminderHealthPanel() {
 
   return (
     <Panel>
-      <PanelHead label="Reminders on this phone" />
+      <PanelHead label={t('rh_title')} />
       <PanelBody>
         {health.problems.length === 0 ? (
           <Banner tone="ok" icon={<Check size={18} color={c.okInk} />}>
-            Reminders look healthy on this phone.
+            {t('rh_healthy')}
           </Banner>
         ) : (
           <View style={{ gap: spacing.lg }}>
             {health.problems.map((problem) => {
-              const copy = copyFor(problem, health);
+              const copy = copyFor(problem, health, t);
               return (
                 <View key={problem} style={{ gap: spacing.sm }}>
                   <Text style={[type.base, { color: c.text, fontWeight: '700' }]}>{copy.headline}</Text>
@@ -167,26 +164,32 @@ export function ReminderHealthPanel() {
         )}
 
         <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
-          <Row label="Reminders set" value={String(health.scheduled)} />
+          <Row label={t('rh_set')} value={String(health.scheduled)} />
           <Row
-            label="Covered until"
+            label={t('rh_covered')}
             value={
               runwayDays === null
                 ? '—'
-                : `${health.runwayUntil!.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} (${runwayDays} days)`
+                : t('rh_covered_value', {
+                    date: formatDate(locale, health.runwayUntil!.toISOString().slice(0, 10), 'short'),
+                    n: runwayDays,
+                  })
             }
           />
           <Row
-            label="Measured delay"
+            label={t('rh_delay')}
             value={
               health.delivery.medianLateMinutes === null
-                ? 'Not enough data yet'
-                : `${health.delivery.medianLateMinutes} min (last ${health.delivery.count})`
+                ? t('rh_delay_none')
+                : t('rh_delay_value', {
+                    n: health.delivery.medianLateMinutes,
+                    count: health.delivery.count,
+                  })
             }
           />
           {!health.canInspect && (
             <Text style={[type.xs, { color: c.text3, lineHeight: 18 }]}>
-              This test build cannot read your phone's alarm and battery settings. The full app can.
+              {t('rh_cannot_inspect')}
             </Text>
           )}
         </View>
@@ -194,7 +197,7 @@ export function ReminderHealthPanel() {
         {health.vendor.severity >= 3 && (
           <View style={{ marginTop: spacing.xl }}>
             <ActionSecondary
-              label={showSteps ? 'Hide steps' : `Steps for ${health.vendor.label}`}
+              label={showSteps ? t('rh_hide_steps') : t('rh_steps_for', { vendor: health.vendor.label })}
               onPress={() => setShowSteps((value) => !value)}
             />
             {showSteps && (
@@ -206,7 +209,7 @@ export function ReminderHealthPanel() {
                 ))}
                 <View style={{ marginTop: spacing.sm }}>
                   <ActionSecondary
-                    label="Open these settings"
+                    label={t('rh_open_settings')}
                     onPress={() => void openAutostartSettings()}
                   />
                 </View>

@@ -23,6 +23,7 @@ import * as Speech from 'expo-speech';
 import { MIN_TOUCH, radius, spacing, type, useTheme } from '../theme';
 import { ActionSecondary } from './ui';
 import { Volume } from './icons';
+import { useT } from '../i18n/useT';
 
 /** Play a recording if there is one, otherwise read the text aloud. */
 export function useSayMedicine(language = 'en-IN') {
@@ -95,11 +96,12 @@ export function VoiceRecorder({
   const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
   const [recording, setRecording] = useState(false);
   const say = useSayMedicine();
+  const { t } = useT();
 
   async function start() {
     const permission = await requestRecordingPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Microphone not allowed', 'You can skip the voice note — the colours and photo still work.');
+      Alert.alert(t('mic_denied_title'), t('mic_denied_body'));
       return;
     }
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
@@ -119,7 +121,7 @@ export function VoiceRecorder({
     <View style={{ gap: spacing.sm }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={recording ? 'Stop recording' : 'Record a voice note'}
+        accessibilityLabel={t(recording ? 'voice_stop' : 'voice_record')}
         onPress={() => void (recording ? stop() : start())}
         style={({ pressed }) => ({
           minHeight: 56,
@@ -136,17 +138,19 @@ export function VoiceRecorder({
             { color: recording ? c.dangerSolidInk : c.onBrand, fontWeight: '700' },
           ]}
         >
-          {recording ? '■  Stop' : value ? '●  Record again' : '●  Record a voice note'}
+          {recording
+            ? `■  ${t('voice_stop')}`
+            : `●  ${t(value ? 'voice_record_again' : 'voice_record')}`}
         </Text>
       </Pressable>
 
       {value && !recording && (
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <View style={{ flex: 1 }}>
-            <SayButton label="Play it back" onPress={() => say(value, '')} />
+            <SayButton label={t('voice_play')} onPress={() => say(value, '')} />
           </View>
           <View style={{ flex: 1 }}>
-            <ActionSecondary label="Remove" onPress={() => onChange(null)} />
+            <ActionSecondary label={t('voice_remove')} onPress={() => onChange(null)} />
           </View>
         </View>
       )}

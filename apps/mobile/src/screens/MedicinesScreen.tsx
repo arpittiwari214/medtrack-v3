@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
   dosesRemainingInStock,
-  formatTime12h,
+  formatTimeFor,
   isLowStock,
   slotNotation,
   type Medicine,
@@ -13,18 +13,13 @@ import { Badge, Banner, EmptyState, Panel, PanelBody, PanelHead, ScreenHeader, s
 import { ColorDot, MedicinePhoto } from '../components/recognition';
 import { Package, Pill } from '../components/icons';
 import AddMedicineScreen from './AddMedicineScreen';
-
-const SCHEDULE_LABEL: Record<string, string> = {
-  daily: 'Every day',
-  interval_days: 'Every few days',
-  days_of_week: 'Certain days',
-  cyclic: 'On and off',
-  as_needed: 'When needed',
-};
+import { dosesLeft, type StringKey } from '../i18n';
+import { useT } from '../i18n/useT';
 
 export default function MedicinesScreen() {
   const c = useTheme();
   const { cache, syncing, refresh, photos } = useApp();
+  const { t, locale } = useT();
   const [adding, setAdding] = useState(false);
 
   const active = useMemo(
@@ -45,7 +40,7 @@ export default function MedicinesScreen() {
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <Text style={[type.sm, { color: c.onBrand, fontWeight: '700' }]}>Add</Text>
+      <Text style={[type.sm, { color: c.onBrand, fontWeight: '700' }]}>{t('add')}</Text>
     </Pressable>
   );
 
@@ -57,16 +52,16 @@ export default function MedicinesScreen() {
         refreshControl={<RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={c.brand} />}
       >
         <ScreenHeader
-          eyebrow={active.length > 0 ? `${active.length} active` : undefined}
-          title="Medicines"
+          eyebrow={active.length > 0 ? t('active_count', { n: active.length }) : undefined}
+          title={t('medicines_title')}
           action={addButton}
         />
 
         {active.length === 0 ? (
           <EmptyState
             icon={(colour) => <Pill size={22} color={colour} />}
-            title="No medicines yet"
-            description="Tap Add and photograph the strip. You do not need to type the name."
+            title={t('medicines_empty_title')}
+            description={t('medicines_empty_body')}
           />
         ) : (
           <View style={sharedStyles.stack}>
@@ -77,8 +72,8 @@ export default function MedicinesScreen() {
               return (
                 <Panel key={medicine.id} critical={medicine.isCritical}>
                   <PanelHead
-                    label={`${SCHEDULE_LABEL[medicine.schedule.kind] ?? medicine.schedule.kind} · ${slotNotation(medicine.schedule.times)}`}
-                    aside={medicine.isCritical ? <Badge label="Important" tone="danger" /> : undefined}
+                    label={`${t(`sched_${medicine.schedule.kind}` as StringKey)} · ${slotNotation(medicine.schedule.times)}`}
+                    aside={medicine.isCritical ? <Badge label={t('important')} tone="danger" /> : undefined}
                   />
 
                   <PanelBody>
@@ -95,7 +90,7 @@ export default function MedicinesScreen() {
                           </Text>
                         </View>
                         <Text style={[type.sm, { color: c.text2 }]}>
-                          {[medicine.strength, medicine.purpose && `for ${medicine.purpose}`]
+                          {[medicine.strength, medicine.purpose && t('for_purpose', { purpose: medicine.purpose })]
                             .filter(Boolean)
                             .join(' · ')}
                         </Text>
@@ -110,7 +105,7 @@ export default function MedicinesScreen() {
                             style={{ backgroundColor: c.surface2, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}
                           >
                             <Text style={[type.xs, TABULAR, { color: c.text2, fontWeight: '600' }]}>
-                              {formatTime12h(time)}
+                              {formatTimeFor(time, locale)}
                             </Text>
                           </View>
                         ))}
@@ -125,7 +120,7 @@ export default function MedicinesScreen() {
                           tone={low ? 'warn' : 'neutral'}
                           icon={<Package size={16} color={low ? c.warnInk : c.text2} />}
                         >
-                          {`${remaining} ${remaining === 1 ? 'dose' : 'doses'} left${low ? ' — time to buy more' : ''}`}
+                          {`${dosesLeft(locale, remaining)}${low ? t('buy_more_suffix') : ''}`}
                         </Banner>
                       </View>
                     )}

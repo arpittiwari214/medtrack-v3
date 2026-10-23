@@ -17,13 +17,13 @@
 import {
   addDays,
   dosesRemainingInStock,
-  formatLocalDate,
   isLowStock,
   projectedRunOutDate,
   toInstant,
   todayIn,
   type Medicine,
 } from '@medtrack/shared';
+import { dosesLeft, formatDate, translate, type Locale } from './i18n/index.ts';
 
 export const CHECK_IN_ID = 'care:checkin';
 export const REFILL_PREFIX = 'care:refill:';
@@ -51,7 +51,12 @@ function nextAt(localTime: string, timezone: string, now: Date): Date {
     : toInstant(addDays(today, 1), localTime, timezone);
 }
 
-export function planCareNudges(medicines: Medicine[], timezone: string, now: Date): Nudge[] {
+export function planCareNudges(
+  medicines: Medicine[],
+  timezone: string,
+  now: Date,
+  locale: Locale = 'en',
+): Nudge[] {
   const active = medicines.filter((medicine) => !medicine.archivedAt);
   if (active.length === 0) return [];
 
@@ -69,18 +74,18 @@ export function planCareNudges(medicines: Medicine[], timezone: string, now: Dat
       return {
         identifier: REFILL_PREFIX + medicine.id,
         fireAt: nextAt(REFILL_TIME, timezone, now),
-        title: `Time to buy more ${medicine.name}`,
+        title: translate(locale, 'n_refill_title', { name: medicine.name }),
         body: runOut
-          ? `About ${left} ${left === 1 ? 'dose' : 'doses'} left — runs out around ${formatLocalDate(runOut)}.`
-          : `About ${left} ${left === 1 ? 'dose' : 'doses'} left.`,
+          ? translate(locale, 'n_refill_body', { left: dosesLeft(locale, left), date: formatDate(locale, runOut, 'long') })
+          : translate(locale, 'n_refill_body_nodate', { left: dosesLeft(locale, left) }),
       };
     });
 
   nudges.push({
     identifier: CHECK_IN_ID,
     fireAt: toInstant(addDays(todayIn(timezone, now), CHECK_IN_AFTER_DAYS), CHECK_IN_TIME, timezone),
-    title: 'We have not seen you for a few days',
-    body: 'Open MedTrack to check today’s medicines.',
+    title: translate(locale, 'n_checkin_title'),
+    body: translate(locale, 'n_checkin_body'),
   });
 
   return nudges;

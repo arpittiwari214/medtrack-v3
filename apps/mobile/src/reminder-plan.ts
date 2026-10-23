@@ -33,7 +33,7 @@ export interface PlanInput {
   horizonDays: number;
   max: number;
   /** Bumped when wording changes, so old text is replaced rather than fired. */
-  contentVersion: number;
+  contentVersion: number | string;
   /** Replace everything regardless of fingerprint. */
   force: boolean;
   /**
@@ -51,7 +51,7 @@ export interface Plan {
   kept: number;
 }
 
-export function fingerprintOf(dose: PlannedDose, contentVersion: number, label = ''): string {
+export function fingerprintOf(dose: PlannedDose, contentVersion: number | string, label = ''): string {
   return [
     contentVersion,
     label,

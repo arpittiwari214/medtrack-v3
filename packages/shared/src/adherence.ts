@@ -17,6 +17,7 @@ import type {
   TimeZone,
 } from './types.js';
 import { addDays, compareLocalDate, eachLocalDate, todayIn, now } from './time.js';
+import type { Locale } from './recognition.js';
 
 /** Doses that count towards a rate. Pending doses are excluded, not counted as failures. */
 const COUNTS_TOWARDS_RATE: ReadonlySet<DoseStatus> = new Set<DoseStatus>([
@@ -282,7 +283,9 @@ const MIN_SAMPLE_FOR_PATTERN = 3;
 export function insights(
   doses: readonly DoseEvent[],
   context: SummariseContext,
+  locale: Locale = 'en',
 ): Insight[] {
+  const hi = locale === 'hi';
   const found: Insight[] = [];
   const missed = doses.filter((d) => d.status === 'missed');
 
@@ -310,21 +313,27 @@ export function insights(
       // medical device. Moving the reminder is the same advice in disguise,
       // because here the reminder time is the dose time. And meal-pairing tips
       // are out too: some medicines must not be taken with food.
-      const WHEN: Record<keyof typeof buckets, string> = {
-        morning: 'in the morning',
-        afternoon: 'in the afternoon',
-        evening: 'in the evening',
-        night: 'at night',
-      };
-      const tip: Record<keyof typeof buckets, string> = {
-        morning: 'Keeping the strip next to something you use first thing, like your toothbrush, can help.',
-        afternoon: 'Keeping a strip in your bag or at work can help.',
-        evening: 'Keeping the strip where you spend your evenings can help.',
-        night: 'Keeping the strip beside your bed can help.',
-      };
+      const WHEN: Record<keyof typeof buckets, string> = hi
+        ? { morning: 'सुबह', afternoon: 'दोपहर', evening: 'शाम', night: 'रात' }
+        : { morning: 'in the morning', afternoon: 'in the afternoon', evening: 'in the evening', night: 'at night' };
+      const tip: Record<keyof typeof buckets, string> = hi
+        ? {
+            morning: 'पत्ता किसी ऐसी चीज़ के पास रखें जो आप सुबह सबसे पहले इस्तेमाल करते हैं, जैसे टूथब्रश।',
+            afternoon: 'एक पत्ता अपने बैग में या काम की जगह पर रखें।',
+            evening: 'पत्ता वहाँ रखें जहाँ आप शाम को ज़्यादा समय बिताते हैं।',
+            night: 'पत्ता अपने बिस्तर के पास रखें।',
+          }
+        : {
+            morning: 'Keeping the strip next to something you use first thing, like your toothbrush, can help.',
+            afternoon: 'Keeping a strip in your bag or at work can help.',
+            evening: 'Keeping the strip where you spend your evenings can help.',
+            night: 'Keeping the strip beside your bed can help.',
+          };
       found.push({
         kind: 'time_of_day_pattern',
-        message: `Most of your missed doses (${topCount} of ${missed.length}) are ${WHEN[topName]}. ${tip[topName]}`,
+        message: hi
+          ? `ज़्यादातर छूटी खुराकें (${missed.length} में से ${topCount}) ${WHEN[topName]} की हैं। ${tip[topName]}`
+          : `Most of your missed doses (${topCount} of ${missed.length}) are ${WHEN[topName]}. ${tip[topName]}`,
         weight: 80,
       });
     }
@@ -335,20 +344,24 @@ export function insights(
   if (worst && worst.taken + worst.missed >= MIN_SAMPLE_FOR_PATTERN && worst.ratePercent < 70) {
     found.push({
       kind: 'struggling_medicine',
-      message: `${worst.medicineName} is your lowest at ${worst.ratePercent}% — ${worst.missed} missed of ${worst.taken + worst.missed}.`,
+      message: hi
+        ? `${worst.medicineName} सबसे कम ली जा रही है — ${worst.ratePercent}%, ${worst.taken + worst.missed} में से ${worst.missed} छूटीं।`
+        : `${worst.medicineName} is your lowest at ${worst.ratePercent}% — ${worst.missed} missed of ${worst.taken + worst.missed}.`,
       weight: 90,
       medicineId: worst.medicineId,
     });
   }
 
-  const trend = compareRecentToPrior(doses, context);
+  const trend = compareRecentToPrior(doses, context, hi);
   if (trend) found.push(trend);
 
   const overall = summarise(doses, context);
   if (overall.taken + overall.missed >= 10 && overall.ratePercent >= 90) {
     found.push({
       kind: 'strong_adherence',
-      message: `${overall.ratePercent}% adherence over ${overall.taken + overall.missed} doses. That is genuinely good.`,
+      message: hi
+        ? `${overall.taken + overall.missed} खुराकों में ${overall.ratePercent}% समय पर ली गईं। यह सचमुच अच्छा है।`
+        : `${overall.ratePercent}% adherence over ${overall.taken + overall.missed} doses. That is genuinely good.`,
       weight: 40,
     });
   }
@@ -361,6 +374,7 @@ export function insights(
 function compareRecentToPrior(
   doses: readonly DoseEvent[],
   context: SummariseContext,
+  hi: boolean,
 ): Insight | null {
   const today = context.today ?? todayIn(context.timezone);
   const recentFrom = addDays(today, -6);
@@ -386,14 +400,18 @@ function compareRecentToPrior(
   if (delta >= 10) {
     return {
       kind: 'improving',
-      message: `Your adherence is up ${delta} points this week — ${recentRate}%, from ${priorRate}%.`,
+      message: hi
+        ? `इस हफ़्ते आप ${delta} अंक ज़्यादा नियमित रहे — ${priorRate}% से ${recentRate}%।`
+        : `Your adherence is up ${delta} points this week — ${recentRate}%, from ${priorRate}%.`,
       weight: 60,
     };
   }
   if (delta <= -10) {
     return {
       kind: 'declining',
-      message: `Your adherence has slipped ${Math.abs(delta)} points this week — ${recentRate}%, down from ${priorRate}%.`,
+      message: hi
+        ? `इस हफ़्ते नियमितता ${Math.abs(delta)} अंक कम हुई — ${priorRate}% से ${recentRate}%।`
+        : `Your adherence has slipped ${Math.abs(delta)} points this week — ${recentRate}%, down from ${priorRate}%.`,
       weight: 85,
     };
   }

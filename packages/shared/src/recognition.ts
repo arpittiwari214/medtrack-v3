@@ -63,6 +63,64 @@ export const MEDICINE_COLOR_LABEL: Record<MedicineColor, string> = {
   gold: 'Gold',
 };
 
+/* ──────────────────────────────── Languages ─────────────────────────────── */
+
+/**
+ * Languages the interface is translated into. Hindi first: it is the largest
+ * Indian-language user base by every estimate the research found, and the
+ * sequence (then Marathi, Bengali, Tamil, Telugu) holds across sources.
+ *
+ * Translations must be reviewed by a native speaker before release; they
+ * were written carefully but not by one.
+ */
+export type Locale = 'en' | 'hi';
+
+/** Pick a supported locale from a BCP-47 tag such as "hi-IN". */
+export function localeFrom(tag: string | null | undefined): Locale {
+  return tag?.toLowerCase().startsWith('hi') ? 'hi' : 'en';
+}
+
+/**
+ * Hindi colour words in their masculine form. Adjectives ending in -ā take -ī
+ * before a feminine noun (पीला कैप्सूल, पीली गोली); the rest do not change.
+ */
+const HINDI_COLOR: Record<MedicineColor, string> = {
+  white: 'सफ़ेद',
+  yellow: 'पीला',
+  orange: 'नारंगी',
+  pink: 'गुलाबी',
+  red: 'लाल',
+  brown: 'भूरा',
+  green: 'हरा',
+  blue: 'नीला',
+  purple: 'बैंगनी',
+  black: 'काला',
+  silver: 'सिल्वर',
+  gold: 'सुनहरा',
+};
+
+const HINDI_FORM: Record<string, { word: string; feminine: boolean }> = {
+  tablet: { word: 'गोली', feminine: true },
+  capsule: { word: 'कैप्सूल', feminine: false },
+  liquid: { word: 'सिरप', feminine: false },
+  injection: { word: 'इंजेक्शन', feminine: false },
+  inhaler: { word: 'इनहेलर', feminine: false },
+  drops: { word: 'ड्रॉप्स', feminine: true },
+  patch: { word: 'पैच', feminine: false },
+  cream: { word: 'क्रीम', feminine: true },
+  medicine: { word: 'दवा', feminine: true },
+};
+
+function hindiColor(color: MedicineColor, feminine: boolean): string {
+  const word = HINDI_COLOR[color];
+  return feminine && word.endsWith('ा') ? `${word.slice(0, -1)}ी` : word;
+}
+
+/** The word for a colour, in a locale. Shown beside every swatch. */
+export function colorLabel(color: MedicineColor, locale: Locale = 'en'): string {
+  return locale === 'hi' ? HINDI_COLOR[color] : MEDICINE_COLOR_LABEL[color];
+}
+
 interface Recognisable {
   name: string;
   strength?: string | null;
@@ -72,20 +130,49 @@ interface Recognisable {
 }
 
 /**
- * A short description a patient will recognise: "White tablet for BP".
+ * A short description a patient will recognise: "White tablet for BP",
+ * "सफ़ेद गोली — BP के लिए".
  *
  * Falls back to the name when there is nothing visual to say. Used as the
  * headline on reminders and dose cards, with the name beneath it.
  */
-export function describeMedicine(medicine: Recognisable): string {
+export function describeMedicine(medicine: Recognisable, locale: Locale = 'en'): string {
   const form = medicine.form && medicine.form !== 'other' ? medicine.form : 'medicine';
   const purpose = medicine.purpose?.trim();
+
+  if (locale === 'hi') {
+    const noun = HINDI_FORM[form] ?? HINDI_FORM['medicine']!;
+    const subject = medicine.pillColor
+      ? `${hindiColor(medicine.pillColor, noun.feminine)} ${noun.word}`
+      : medicine.name;
+    return purpose ? `${subject} — ${purpose} के लिए` : subject;
+  }
 
   if (medicine.pillColor) {
     const look = `${MEDICINE_COLOR_LABEL[medicine.pillColor]} ${form}`;
     return purpose ? `${look} for ${purpose}` : look;
   }
   return purpose ? `${medicine.name} for ${purpose}` : medicine.name;
+}
+
+/**
+ * A clock time the way it is said: "8:00 AM", "सुबह 8:00".
+ *
+ * Western digits in every language — they are the platform default, what
+ * urban users prefer, and what is printed on the strip the patient is holding.
+ * Hindi leads with the part of the day rather than AM/PM, which is how a time
+ * is actually spoken ("रात 9 बजे").
+ */
+export function formatTimeFor(localTime: string, locale: Locale = 'en'): string {
+  const [hourText = '0', minute = '00'] = localTime.split(':');
+  const hour = Number(hourText);
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+
+  if (locale !== 'hi') return `${twelve}:${minute} ${hour < 12 ? 'AM' : 'PM'}`;
+
+  const part =
+    hour < 4 ? 'रात' : hour < 12 ? 'सुबह' : hour < 16 ? 'दोपहर' : hour < 19 ? 'शाम' : 'रात';
+  return `${part} ${twelve}:${minute}`;
 }
 
 /* ─────────────────────────── Time-of-day slots ──────────────────────────── */
@@ -98,9 +185,9 @@ export function describeMedicine(medicine: Recognisable): string {
  * clock times underneath stay editable.
  */
 export const DOSE_SLOTS = [
-  { id: 'morning', label: 'Morning', time: '08:00' },
-  { id: 'afternoon', label: 'Afternoon', time: '14:00' },
-  { id: 'night', label: 'Night', time: '21:00' },
+  { id: 'morning', label: 'Morning', labelHi: 'सुबह', time: '08:00' },
+  { id: 'afternoon', label: 'Afternoon', labelHi: 'दोपहर', time: '14:00' },
+  { id: 'night', label: 'Night', labelHi: 'रात', time: '21:00' },
 ] as const;
 
 export type DoseSlot = (typeof DOSE_SLOTS)[number]['id'];
