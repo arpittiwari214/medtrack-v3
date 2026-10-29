@@ -366,3 +366,12 @@ describe('describeMedicine on a shared phone', () => {
     expect(describeMedicine({ ...papa, person: null })).toBe('White tablet for BP');
   });
 });
+
+describe('templates', () => {
+  it('splits around placeholders so links can sit where each language puts them', async () => {
+    const { splitTemplate, fillTemplate } = await import('./recognition.js');
+    expect(splitTemplate('Don’t have an account? {link}')).toEqual(['Don’t have an account? ', 'link', '']);
+    expect(splitTemplate('मैं {terms} और {privacy} से सहमत हूँ')).toEqual(['मैं ', 'terms', ' और ', 'privacy', ' से सहमत हूँ']);
+    expect(fillTemplate('{n} min', { n: 5 })).toBe('5 min');
+  });
+});

@@ -94,12 +94,19 @@ export function resolveLocale(preference: string | null | undefined): Locale {
   return preference ? localeFrom(preference) : deviceLocale();
 }
 
+const PLACEHOLDER = /\{(\w+)\}/g;
+
 /** Fill "{name}" placeholders. An unknown one stays visible rather than printing "undefined". */
 export function fillTemplate(template: string, params?: Record<string, string | number>): string {
   if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+  return template.replace(PLACEHOLDER, (match, name: string) =>
     name in params ? String(params[name]) : match,
   );
+}
+
+/** Split a template around its placeholders: even entries are text, odd ones are names. */
+export function splitTemplate(template: string): string[] {
+  return template.split(PLACEHOLDER);
 }
 
 /**

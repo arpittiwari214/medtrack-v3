@@ -16,7 +16,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { fillTemplate, formatDateFor, resolveLocale, type Locale } from '@medtrack/shared';
+import { fillTemplate, formatDateFor, resolveLocale, splitTemplate, type Locale } from '@medtrack/shared';
 import { en, hi, type StringKey } from './strings.js';
 
 const TABLES: Record<Locale, Record<StringKey, string>> = { en, hi };
@@ -85,9 +85,9 @@ export function useT() {
  * simply be appended.
  */
 export function interleave(template: string, nodes: Record<string, ReactNode>): ReactNode[] {
-  return template
-    .split(/{(w+)}/g)
-    .map((part, index) => (index % 2 === 1 ? <Fragment key={index}>{nodes[part] ?? `{${part}}`}</Fragment> : part));
+  return splitTemplate(template).map((part, index) =>
+    index % 2 === 1 ? <Fragment key={index}>{nodes[part] ?? `{${part}}`}</Fragment> : part,
+  );
 }
 
 export type { StringKey };
