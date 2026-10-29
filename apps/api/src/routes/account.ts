@@ -19,6 +19,7 @@ import { audit, consentRecord } from '../services/privacy.js';
 import { childLogger } from '../config/logger.js';
 import { auth, requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/error.js';
+import { passwordCheckLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validate.js';
 import { Alert } from '../models/Alert.js';
 import { Appointment } from '../models/Appointment.js';
@@ -175,7 +176,7 @@ router.post('/consents', validate(updateConsentSchema), async (req, res, next) =
 
 /* ──────────────────────────── Right of erasure ──────────────────────────── */
 
-router.post('/delete', validate(deleteAccountSchema), async (req, res, next) => {
+router.post('/delete', passwordCheckLimiter, validate(deleteAccountSchema), async (req, res, next) => {
   try {
     const { userId } = auth(req);
     const input = deleteAccountSchema.parse(req.body);

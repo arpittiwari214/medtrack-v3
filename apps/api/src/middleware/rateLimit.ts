@@ -47,6 +47,18 @@ export const authLimiter = make({
   },
 });
 
+/**
+ * Re-entering the password on a signed-in account — changing it, deleting the
+ * account. Keyed by account: without a limit, someone holding an unlocked
+ * phone could guess the password here and lock the owner out.
+ */
+export const passwordCheckLimiter = make({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => req.auth?.userId ?? ipKeyGenerator(req.ip ?? ''),
+});
+
 /** Account creation — throttled to stop bulk signup and mail-bombing. */
 export const signupLimiter = make({
   windowMs: 60 * 60 * 1000,

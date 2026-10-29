@@ -28,7 +28,12 @@ import { env } from '../config/env.js';
 import { childLogger } from '../config/logger.js';
 import { auth, requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/error.js';
-import { authLimiter, emailLimiter, signupLimiter } from '../middleware/rateLimit.js';
+import {
+  authLimiter,
+  emailLimiter,
+  passwordCheckLimiter,
+  signupLimiter,
+} from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validate.js';
 import {
   PasswordReset,
@@ -259,7 +264,7 @@ router.patch('/me', requireAuth, validate(updateProfileSchema), async (req, res,
 
 /* ─────────────────────────── Password changes ──────────────────────────── */
 
-router.post('/change-password', requireAuth, validate(changePasswordSchema), async (req, res, next) => {
+router.post('/change-password', requireAuth, passwordCheckLimiter, validate(changePasswordSchema), async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
     const { userId, sessionId } = auth(req);
