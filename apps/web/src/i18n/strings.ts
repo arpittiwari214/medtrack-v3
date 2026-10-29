@@ -406,6 +406,10 @@ export const en = {
   footer_note: '© {year} MedTrack. Built in India. Personal data is handled under the Digital Personal Data Protection Act, 2023.',
   switch_language: 'Change language',
   skip_to_content: 'Skip to content',
+  show: 'Show',
+  hide: 'Hide',
+  show_password: 'Show password',
+  hide_password: 'Hide password',
 } as const;
 
 export type StringKey = keyof typeof en;
@@ -811,4 +815,8 @@ export const hi: Record<StringKey, string> = {
   footer_note: '© {year} MedTrack. भारत में बना। निजी डेटा डिजिटल पर्सनल डेटा प्रोटेक्शन क़ानून, 2023 के तहत संभाला जाता है।',
   switch_language: 'भाषा बदलें',
   skip_to_content: 'मुख्य सामग्री पर जाएँ',
+  show: 'दिखाएँ',
+  hide: 'छिपाएँ',
+  show_password: 'पासवर्ड दिखाएँ',
+  hide_password: 'पासवर्ड छिपाएँ',
 };

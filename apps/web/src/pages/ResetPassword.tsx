@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client.js';
 import { authApi } from '../api/endpoints.js';
-import { ErrorBanner } from '../components/ui.js';
+import { ErrorBanner, PasswordInput } from '../components/ui.js';
 import { Pill } from '../components/icons.js';
 import { useT } from '../i18n/index.js';
 
@@ -70,10 +70,9 @@ export default function ResetPassword() {
           <label className="label" htmlFor="password">
             {t('new_password')}
           </label>
-          <input
+          <PasswordInput
             id="password"
             className="input"
-            type="password"
             autoComplete="new-password"
             required
             value={password}
@@ -86,10 +85,9 @@ export default function ResetPassword() {
           <label className="label" htmlFor="confirm">
             {t('confirm_new_password')}
           </label>
-          <input
+          <PasswordInput
             id="confirm"
             className="input"
-            type="password"
             autoComplete="new-password"
             required
             value={confirm}

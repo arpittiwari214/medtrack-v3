@@ -201,6 +201,10 @@ export const en = {
 
   // Sign in
   welcome_back: 'Welcome back',
+  show: 'Show',
+  hide: 'Hide',
+  show_password: 'Show password',
+  hide_password: 'Hide password',
   use_locally: 'Use without an account',
   use_locally_note: 'Everything stays on this phone. You can sign in later to back it up.',
   sign_in_title_local: 'Back up your medicines',
@@ -467,6 +471,10 @@ export const hi: Record<StringKey, string> = {
   sign_out_body: 'इस फ़ोन पर रिमाइंडर बंद हो जाएँगे और ऑफ़लाइन डेटा हटा दिया जाएगा।',
 
   welcome_back: 'फिर से स्वागत है',
+  show: 'दिखाएँ',
+  hide: 'छिपाएँ',
+  show_password: 'पासवर्ड दिखाएँ',
+  hide_password: 'पासवर्ड छिपाएँ',
   use_locally: 'बिना खाते के इस्तेमाल करें',
   use_locally_note: 'सब कुछ इसी फ़ोन पर रहेगा। बाद में बैकअप के लिए साइन इन कर सकते हैं।',
   sign_in_title_local: 'अपनी दवाइयों का बैकअप लें',

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.js';
-import { ErrorBanner } from '../components/ui.js';
+import { ErrorBanner, PasswordInput } from '../components/ui.js';
 import { Pill } from '../components/icons.js';
 import { interleave, useT } from '../i18n/index.js';
 
@@ -123,10 +123,9 @@ export default function Signup() {
           <label className="label" htmlFor="password">
             {t('password')}
           </label>
-          <input
+          <PasswordInput
             id="password"
             className="input"
-            type="password"
             autoComplete="new-password"
             required
             value={form.password}

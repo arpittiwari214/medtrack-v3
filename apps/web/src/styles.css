@@ -600,6 +600,35 @@ a:hover {
   line-height: 1.6;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field .input {
+  padding-right: 76px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--s2);
+  transform: translateY(-50%);
+  min-height: 36px;
+  padding: 0 var(--s3);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--brand-ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: var(--surface-2);
+}
+
 .input::placeholder,
 .textarea::placeholder {
   color: var(--text-3);

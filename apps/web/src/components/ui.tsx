@@ -6,7 +6,7 @@
  * cannot make, and this app uses it for "taken" versus "missed".
  */
 
-import type { ReactNode } from 'react';
+import { useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { DoseStatus } from '@medtrack/shared';
 import { useT, type StringKey } from '../i18n/index.js';
@@ -45,6 +45,30 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A password box with a Show/Hide switch. Typing a password blind on a phone
+ * keyboard is where most failed sign-ins and mistyped new passwords come from.
+ */
+export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const { t } = useT();
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="password-field">
+      <input {...props} type={visible ? 'text' : 'password'} />
+      <button
+        type="button"
+        className="password-toggle"
+        aria-label={t(visible ? 'hide_password' : 'show_password')}
+        aria-pressed={visible}
+        aria-controls={props.id}
+        onClick={() => setVisible(!visible)}
+      >
+        {t(visible ? 'hide' : 'show')}
+      </button>
     </div>
   );
 }

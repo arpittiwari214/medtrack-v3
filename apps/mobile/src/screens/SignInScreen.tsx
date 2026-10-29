@@ -22,6 +22,7 @@ export default function SignInScreen() {
   const { t } = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -105,7 +106,19 @@ export default function SignInScreen() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{t('password')}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={[type.sm, { color: c.text, fontWeight: '600' }]}>{t('password')}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t(showPassword ? 'hide_password' : 'show_password')}
+              onPress={() => setShowPassword(!showPassword)}
+              style={{ minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: spacing.sm }}
+            >
+              <Text style={[type.sm, { color: c.brand, fontWeight: '600' }]}>
+                {t(showPassword ? 'hide' : 'show')}
+              </Text>
+            </Pressable>
+          </View>
           <TextInput
             style={{
               minHeight: MIN_TOUCH + 4,
@@ -119,7 +132,7 @@ export default function SignInScreen() {
             }}
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             autoComplete="current-password"
             textContentType="password"
             onSubmitEditing={submit}

@@ -11,7 +11,7 @@ import { CONSENT_SCOPE, type ConsentKind } from '@medtrack/shared';
 import { ApiError, tokens } from '../api/client.js';
 import { accountApi, authApi } from '../api/endpoints.js';
 import { useAuth } from '../context/AuthContext.js';
-import { ErrorBanner, Modal, ScreenHeader, SuccessBanner } from '../components/ui.js';
+import { ErrorBanner, Modal, PasswordInput, ScreenHeader, SuccessBanner } from '../components/ui.js';
 import { AlertTriangle, ChevronRight, Users } from '../components/icons.js';
 import { interleave, useT, type StringKey } from '../i18n/index.js';
 
@@ -314,10 +314,9 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
             <label className="label" htmlFor="current">
               {t('current_password')}
             </label>
-            <input
+            <PasswordInput
               id="current"
               className="input"
-              type="password"
               autoComplete="current-password"
               required
               value={currentPassword}
@@ -328,10 +327,9 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
             <label className="label" htmlFor="new">
               {t('new_password')}
             </label>
-            <input
+            <PasswordInput
               id="new"
               className="input"
-              type="password"
               autoComplete="new-password"
               required
               value={newPassword}
@@ -404,10 +402,9 @@ function DeleteAccountModal({
             <label className="label" htmlFor="delete-password">
               {t('your_password')}
             </label>
-            <input
+            <PasswordInput
               id="delete-password"
               className="input"
-              type="password"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
