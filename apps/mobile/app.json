@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "medtrack",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#101619",
-      "resizeMode": "contain"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.medtrack.client",
