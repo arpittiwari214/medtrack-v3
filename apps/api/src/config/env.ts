@@ -43,6 +43,11 @@ const envSchema = z
 
     /** Mongo connection string. Required — there is no sensible default. */
     MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
+    /**
+     * Database to use, overriding any name in MONGODB_URI. Lets a host point
+     * at a fresh database without editing the secret connection string.
+     */
+    MONGODB_DB_NAME: z.string().min(1).optional(),
 
     /**
      * Signing secrets. Separate secrets for access and refresh tokens means a

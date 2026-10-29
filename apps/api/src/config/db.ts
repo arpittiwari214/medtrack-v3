@@ -37,6 +37,7 @@ export async function connectDatabase(uri: string = env.MONGODB_URI): Promise<vo
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       await mongoose.connect(uri, {
+        ...(env.MONGODB_DB_NAME ? { dbName: env.MONGODB_DB_NAME } : {}),
         serverSelectionTimeoutMS: 10_000,
         // Bound the pool so a burst cannot exhaust an Atlas shared tier.
         maxPoolSize: 20,
