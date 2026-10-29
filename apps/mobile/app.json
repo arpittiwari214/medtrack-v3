@@ -58,7 +58,10 @@
       "expo-audio"
     ],
     "extra": {
-      "apiUrl": "http://localhost:5000/api"
+      "apiUrl": "http://localhost:5000/api",
+      "eas": {
+        "projectId": "583627ed-cf3f-4b1b-bae5-f42e26b39cc9"
+      }
     }
   }
 }
