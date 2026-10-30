@@ -44,6 +44,40 @@ import { audit } from '../services/privacy.js';
 
 const log = childLogger('care');
 const router = Router();
+
+/* ────────────────────── Before sign-in: the invitation ──────────────────── */
+
+// Registered ahead of `requireAuth`: most invited caregivers have no account
+// yet, and the page has to show them what they are accepting first.
+/** Inspect an invitation before accepting. Requires the token, not a session. */
+router.get('/invitations/:token', async (req, res, next) => {
+  try {
+    const link = await CareLink.findOne({
+      inviteTokenHash: hashInviteToken(String(req.params['token'])),
+      status: 'pending',
+    })
+      .select('+inviteTokenHash')
+      .lean();
+
+    if (!link || link.expiresAt.getTime() < Date.now()) {
+      throw AppError.notFound('That invitation is invalid or has expired.');
+    }
+
+    const patient = await User.findById(link.patientId).select({ name: 1 }).lean();
+
+    res.json({
+      invitation: {
+        patientName: patient?.name ?? 'A MedTrack user',
+        relation: link.relation,
+        permissions: link.permissions,
+        expiresAt: link.expiresAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.use(requireAuth);
 
 /* ─────────────────────── Patient side: manage links ─────────────────────── */
@@ -171,35 +205,6 @@ router.delete('/caregivers/:id', async (req, res, next) => {
 });
 
 /* ──────────────────── Caregiver side: accept and view ───────────────────── */
-
-/** Inspect an invitation before accepting. Requires the token, not a session. */
-router.get('/invitations/:token', async (req, res, next) => {
-  try {
-    const link = await CareLink.findOne({
-      inviteTokenHash: hashInviteToken(String(req.params['token'])),
-      status: 'pending',
-    })
-      .select('+inviteTokenHash')
-      .lean();
-
-    if (!link || link.expiresAt.getTime() < Date.now()) {
-      throw AppError.notFound('That invitation is invalid or has expired.');
-    }
-
-    const patient = await User.findById(link.patientId).select({ name: 1 }).lean();
-
-    res.json({
-      invitation: {
-        patientName: patient?.name ?? 'A MedTrack user',
-        relation: link.relation,
-        permissions: link.permissions,
-        expiresAt: link.expiresAt,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
 
 router.post('/invitations/respond', validate(respondToInviteSchema), async (req, res, next) => {
   try {

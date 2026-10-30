@@ -466,6 +466,11 @@ describe('care links', () => {
     link!.inviteTokenHash = tokenHash;
     await link!.save();
 
+    // Readable signed out: the invited person usually has no account yet.
+    const preview = await request(app).get(`/api/care/invitations/${token}`);
+    expect(preview.status).toBe(200);
+    expect(preview.body.invitation.relation).toBe('Daughter');
+
     await authed(caregiver)(request(app).post('/api/care/invitations/respond'))
       .send({ token, accept: true })
       .expect(200);

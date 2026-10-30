@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.js';
 import { ErrorBanner, PasswordInput } from '../components/ui.js';
@@ -18,6 +18,8 @@ function detectTimeZone(): string {
 export default function Signup() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  // Set by the caregiver invitation, so a new caregiver lands back on it.
+  const returnTo = (useLocation().state as { from?: string } | null)?.from ?? '/app';
   const { t, locale } = useT();
 
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -60,7 +62,7 @@ export default function Signup() {
         marketingEmail,
         language: locale,
       });
-      navigate('/app', { replace: true });
+      navigate(returnTo, { replace: true });
     } catch (caught) {
       if (caught instanceof ApiError) {
         setError(caught.message);

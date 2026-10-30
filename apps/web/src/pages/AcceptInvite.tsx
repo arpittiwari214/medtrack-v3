@@ -158,7 +158,11 @@ export default function AcceptInvite() {
               >
                 {t('sign_in')}
               </Link>
-              <Link className="btn btn-secondary btn-block" to="/signup">
+              <Link
+                className="btn btn-secondary btn-block"
+                to="/signup"
+                state={{ from: `/care/accept?token=${token}` }}
+              >
                 {t('create_account')}
               </Link>
             </>
