@@ -337,7 +337,8 @@ export function DaySegments({ statuses }: { statuses: DoseStatus[] }) {
   const fill = (status: DoseStatus) =>
     status === 'taken' ? c.ok
       : status === 'missed' ? c.danger
-      : status === 'skipped' ? c.borderStrong
+      // Lighter than "not yet": in dark mode the border grey matched it.
+      : status === 'skipped' ? c.text3
       : c.surface3;
 
   return (

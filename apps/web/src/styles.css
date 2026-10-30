@@ -1042,7 +1042,8 @@ a:hover {
   background: var(--danger);
 }
 .day-segment-skipped {
-  background: var(--border-strong);
+  /* Lighter than "not yet": in dark mode the border grey matched it. */
+  background: var(--text-3);
 }
 
 .meter {

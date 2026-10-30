@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
   describeMedicine,
   dosesRemainingInStock,
@@ -331,6 +331,14 @@ function NextDose({
   const headline = medicine ? describeMedicine(medicine, locale) : dose.medicineName;
   const showName = headline !== dose.medicineName;
 
+  // Asked first: one stray tap used to record a deliberate skip, and nothing
+  // on screen said so.
+  const confirmSkip = () =>
+    Alert.alert(t('skip_confirm'), t('skip_confirm_body', { name: headline, time: formatTimeFor(dose.localTime, locale) }), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('skip'), style: 'destructive', onPress: onSkip },
+    ]);
+
   return (
     <Panel critical={dose.isCritical}>
       <PanelHead
@@ -390,7 +398,7 @@ function NextDose({
           <ActionSecondary
             label={t('skip')}
             icon={(colour) => <SkipForward size={16} color={colour} />}
-            onPress={onSkip}
+            onPress={confirmSkip}
             style={{ flex: 1 }}
           />
         </View>
