@@ -57,8 +57,12 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function RedirectIfSignedIn({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { t } = useT();
+  const location = useLocation();
   if (loading) return <Spinner label={t('checking_session')} />;
-  if (user) return <Navigate to="/app" replace />;
+  // The moment sign-in or sign-up succeeds this fires, so it must honour where
+  // they were headed. Always sending them to /app stranded new caregivers on an
+  // empty dashboard instead of the invitation they came to accept.
+  if (user) return <Navigate to={(location.state as { from?: string } | null)?.from ?? '/app'} replace />;
   return <>{children}</>;
 }
 
