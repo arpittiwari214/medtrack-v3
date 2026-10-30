@@ -77,7 +77,15 @@ export default function SettingsScreen() {
             <View>
               <ListRow title={user?.name ?? '—'} subtitle={t('name')} />
               <ListRow title={user?.email ?? '—'} subtitle={t('email')} />
-              <ListRow title={INDIA_ZONES.has(zone) ? t('india_time') : zone} subtitle={t('timezone')} last />
+              <ListRow title={INDIA_ZONES.has(zone) ? t('india_time') : zone} subtitle={t('timezone')} />
+              {/* Caregivers are managed on the website; without this row nobody
+                  using the phone could find them. */}
+              <ListRow
+                title={t('caregivers')}
+                subtitle={t('caregivers_row_note')}
+                onPress={() => void Linking.openURL(`${WEB_URL}/app/caregivers`)}
+                last
+              />
             </View>
           </Panel>
         )}

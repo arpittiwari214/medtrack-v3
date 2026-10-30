@@ -33,6 +33,8 @@ reach phones on their own.
 
 - [x] Skip asks "Skip this dose?" first, and skipped doses show lighter grey
       on the Today bar. *(Already in the code, waiting for this build.)*
+- [x] Settings → Account has a **Caregivers** row that opens the caregivers
+      page on the website. *(Already in the code, waiting for this build.)*
 - [ ] **Silent updates** (Expo "EAS Update"). Fixes to screens, text and layout
       download by themselves the next time the app opens. No link, no Install
       button.

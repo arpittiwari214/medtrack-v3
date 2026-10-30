@@ -177,6 +177,8 @@ export const en = {
   // Settings
   settings_title: 'Settings',
   account: 'Account',
+  caregivers: 'Caregivers',
+  caregivers_row_note: 'Invite family to get missed-dose alerts. Opens the website.',
   name: 'Name',
   timezone: 'Timezone',
   india_time: 'India (IST)',
@@ -456,6 +458,8 @@ export const hi: Record<StringKey, string> = {
 
   settings_title: 'सेटिंग्स',
   account: 'खाता',
+  caregivers: 'देखभाल करने वाले',
+  caregivers_row_note: 'परिवार को बुलाएँ, ताकि दवा छूटने पर उन्हें पता चले। वेबसाइट पर खुलता है।',
   name: 'नाम',
   timezone: 'समय क्षेत्र',
   india_time: 'भारत (IST)',
