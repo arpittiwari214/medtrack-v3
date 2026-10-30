@@ -149,6 +149,27 @@ backend kept awake and backed up, on the Play Store. Claude reminds you on
 - [ ] **Pricing:** free for patients; a monthly fee per clinic or doctor for the
       dashboard and integration.
 
+### Earn: a premium paid plan on the Play Store
+- [ ] **Free stays free:** reminders, recording doses, and missed-dose alerts
+      to one caregiver are never paid. Locking safety behind a payment loses
+      trust, and patients.
+- [ ] **Premium (MedTrack Plus), for example:** more caregivers and family
+      members, a printable report to show the doctor, cloud backup of strip
+      photos and voice labels, longer history and deeper insights, refill
+      reminders sent to a chemist, and priority support.
+- [ ] **Price in rupees:** start around ₹49–99 a month or ₹499 a year, with a
+      free trial. Test different prices during the pilot.
+- [ ] **How it's paid:** inside the Android app, Google requires Google Play
+      Billing (India also allows "user choice billing" with another provider).
+      Google keeps 15% of subscriptions. Use RevenueCat or `react-native-iap`
+      in the app; the backend checks each purchase with Google and records the
+      plan on the account, so the website unlocks it too.
+- [ ] **Before charging:** Play Console payments profile, a business bank
+      account (see "Be ready" above), terms and refund policy updated, and GST
+      handling confirmed with a CA.
+- [ ] **Clinics pay separately:** the per-clinic fee above is invoiced
+      directly, not through the Play Store.
+
 ### Integration with hospital systems
 - [ ] **Doctor / clinic dashboard:** a new role that sees consenting patients'
       adherence, missed-dose alerts and missed visits, like caregivers today.
