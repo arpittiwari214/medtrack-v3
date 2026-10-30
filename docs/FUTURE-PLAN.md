@@ -7,18 +7,19 @@ Tick a box when it's done.
 
 ## 1. Still to finish (started, not done)
 
-Email isn't switched on yet, so "Forgot password" and caregiver invites
-don't send anything until these are done.
+Email works since 30 October 2026: password resets and caregiver invites
+both arrive.
 
-- [ ] **Brevo account** — sign up free at brevo.com, add yourself as a sender
+- [x] **Brevo account** — sign up free at brevo.com, add yourself as a sender
       (name `MedTrack`, your Gmail), and verify it with the 6-digit code.
-- [ ] **Connect Brevo to Render** — make an SMTP key in Brevo and add these
+- [x] **Connect Brevo to Render** — make an SMTP key in Brevo and add these
       settings to `medtrack-backend` on Render → Environment:
       `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=2525`, `SMTP_SECURE=false`,
       `SMTP_USER` (Brevo's "Login"), `SMTP_PASSWORD` (the SMTP key),
       `EMAIL_FROM_ADDRESS` (your Gmail).
       Port 2525 because Render's free plan blocks the usual email ports.
-- [ ] **Test** — try "Forgot password", and re-send the caregiver invite.
+- [x] **Test** — "Forgot password" and the caregiver invite both arrived, and
+      the invite was accepted.
 - [ ] **Delete `.env.render.local`** from the project folder on your computer.
       It holds the backend's secret keys, which are already saved on Render.
 - [ ] *(Optional)* Render → medtrack-backend → Settings → Health Check Path:
@@ -84,6 +85,10 @@ About ₹500–1,000 a year. Nothing else here costs money.
 - [ ] **Paid Render** (about $7 a month). Stops the backend "sleeping": today,
       the first time anyone opens the app after a quiet spell, it can take up
       to a minute to wake. Not needed for email — Brevo works on the free plan.
+- [ ] **Invitations waiting on "People I care for".** Today a caregiver must
+      open the email link and tap Accept; if they lose the email, nothing in
+      their account shows the invitation. List waiting invitations there, with
+      an Accept button.
 - [ ] **Google Play Store.** Updates become fully automatic and people trust
       the app more. One-time $25 developer fee. Google asks new personal
       accounts to test the app with a small group (currently 12 people) for
