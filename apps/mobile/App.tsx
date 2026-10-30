@@ -7,14 +7,16 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Text, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, Text, View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
+import * as Application from 'expo-application';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppProvider, useApp } from './src/context/AppContext';
+import { WEB_URL } from './src/config';
 import { recordDelivery } from './src/notifications/health';
 import { useT } from './src/i18n/useT';
 import SignInScreen from './src/screens/SignInScreen';
@@ -122,6 +124,30 @@ function Root() {
       received.remove();
     };
   }, [actOnDose, setAnnounceDoseId]);
+
+  /**
+   * A build installed from a link never updates itself. Most fixes arrive over
+   * the air (expo-updates); a build that needs a fresh download is announced
+   * here, from a file the website publishes: { versionCode, url } of the newest.
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'android' || __DEV__) return;
+    fetch(`${WEB_URL}/app-version.json`, { cache: 'no-store' })
+      .then((response) => response.json() as Promise<{ versionCode?: unknown; url?: unknown }>)
+      .then((latest) => {
+        const installed = Number(Application.nativeBuildVersion);
+        if (typeof latest.url !== 'string' || !(Number(latest.versionCode) > installed)) return;
+        const url = latest.url;
+        Alert.alert(t('update_title'), t('update_body'), [
+          { text: t('later'), style: 'cancel' },
+          { text: t('update_now'), onPress: () => void Linking.openURL(url) },
+        ]);
+      })
+      // Offline, or no file yet: ask again next launch.
+      .catch(() => undefined);
+    // Once per launch, not on every language change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return (

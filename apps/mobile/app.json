@@ -3,6 +3,12 @@
     "name": "MedTrack",
     "slug": "medtrack",
     "version": "4.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/583627ed-cf3f-4b1b-bae5-f42e26b39cc9"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "medtrack",

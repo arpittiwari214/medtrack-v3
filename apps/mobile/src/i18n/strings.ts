@@ -19,6 +19,10 @@ export const en = {
 
   // Common
   cancel: 'Cancel',
+  later: 'Later',
+  update_now: 'Update now',
+  update_title: 'A new version of MedTrack is ready',
+  update_body: 'It fixes problems and adds improvements. Your medicines and history stay as they are. Tap Update now, then Update when your phone asks.',
   loading: 'Loading MedTrack…',
   important: 'Important',
 
@@ -308,6 +312,10 @@ export const hi: Record<StringKey, string> = {
   tab_settings: 'सेटिंग्स',
 
   cancel: 'रद्द करें',
+  later: 'बाद में',
+  update_now: 'अभी अपडेट करें',
+  update_title: 'MedTrack का नया संस्करण तैयार है',
+  update_body: 'इसमें सुधार और नई सुविधाएँ हैं। आपकी दवाएँ और रिकॉर्ड वैसे ही रहेंगे। "अभी अपडेट करें" दबाएँ, फिर फ़ोन पूछे तो Update दबाएँ।',
   loading: 'MedTrack खुल रहा है…',
   important: 'ज़रूरी',
 
