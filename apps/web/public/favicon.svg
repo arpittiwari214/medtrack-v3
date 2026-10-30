@@ -1,8 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MedTrack">
-  <rect width="64" height="64" rx="14" fill="#1B2B4B"/>
-  <!-- A capsule set on the diagonal: recognisable at 16px, which a pill bottle is not. -->
-  <g transform="rotate(-45 32 32)">
-    <rect x="18" y="24" width="28" height="16" rx="8" fill="#FFFFFF"/>
-    <path d="M32 24h6a8 8 0 0 1 8 8 8 8 0 0 1-8 8h-6z" fill="#4ECF9F"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="MedTrack">
+  <rect width="1024" height="1024" rx="224" fill="#06758a"/>
+  <!-- A capsule split by a check: one shape that says "this dose is taken", the app's core action.
+       Same artwork as the phone app's icon (apps/mobile/assets/source/icon.svg). -->
+  <path d="M360 511.48L459.41 610.9L664 375.55L664 319A152 152 0 0 0 360 319L360 511.48Z" fill="#ffffff"/>
+  <path d="M664 470.05L462.59 701.75L360 599.16L360 705A152 152 0 0 0 664 705L664 470.05Z" fill="#ffffff"/>
 </svg>

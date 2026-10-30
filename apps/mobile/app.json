@@ -19,10 +19,9 @@
     "android": {
       "package": "app.medtrack.client",
       "adaptiveIcon": {
-        "backgroundColor": "#0891a8",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#06758a"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -37,6 +36,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
           "color": "#0891a8",
           "defaultChannel": "reminders"
         }
