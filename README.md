@@ -173,12 +173,17 @@ this app uses it to mean "taken" versus "missed".
 
 ## Deployment
 
-**Step-by-step guide: [docs/DEPLOY.md](docs/DEPLOY.md)** — database on MongoDB Atlas (Mumbai), API on
-Fly.io (Mumbai), website on Vercel, phone app built with Expo EAS.
+**Runbook: [docs/RUNBOOK.md](docs/RUNBOOK.md)** — how production runs and how to ship. All
+documents: [docs/README.md](docs/README.md).
 
-The API needs a host that stays running. v3 was on a free tier that sleeps after 15 minutes idle, so
-its in-process scheduler died with the instance and reminders silently stopped — which is what took
-the service down. `apps/api/fly.toml` keeps exactly one machine always on.
+Today: database on MongoDB Atlas (Mumbai), API on Render, website on Vercel, email through Brevo,
+phone app built and updated over the air with Expo EAS.
+
+The API's scheduler (missed-dose caregiver alerts, visit reminders, purges) runs in-process, so it
+needs a host that stays awake. Render's free plan sleeps after 15 minutes idle. Keep it awake with an
+uptime monitor or a paid instance (see the runbook's *Known limits*). Phone reminders are scheduled
+on the device and are unaffected. `apps/api/fly.toml` is kept for an always-on Fly.io machine as an
+alternative host.
 
 Build the API image from the repository root, not from `apps/api` — it depends on the shared
 workspace. `.dockerignore` keeps the local database (`.data/`) and secrets out of the image.
