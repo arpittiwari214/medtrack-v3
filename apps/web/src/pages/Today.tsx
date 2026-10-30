@@ -137,7 +137,6 @@ export default function Today() {
   if (error && !data) return <ErrorBanner message={error} onRetry={load} />;
   if (!data) return null;
 
-  const done = data.taken.length + data.skipped.length + data.missed.length;
   const total = ordered.length;
   const firstName = user?.name?.split(' ')[0] ?? '';
 
@@ -204,7 +203,8 @@ export default function Today() {
               ))}
             </div>
             <span className="t-xs numeric muted">
-              {done}/{total}
+              {/* Taken, not "dealt with": four missed doses once read as 4/5. */}
+              {data.taken.length}/{total}
             </span>
           </div>
 

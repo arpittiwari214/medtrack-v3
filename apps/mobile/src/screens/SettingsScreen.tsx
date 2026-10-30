@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { formatTimeFor, toLocalDate, toLocalTime } from '@medtrack/shared';
 import { useApp } from '../context/AppContext';
+import { WEB_URL } from '../config';
 import { readOutbox } from '../storage/offline';
 import { radius, spacing, type, useTheme } from '../theme';
 import {
@@ -13,7 +15,11 @@ import {
   sharedStyles,
 } from '../components/ui';
 import { ReminderHealthPanel } from '../components/ReminderHealth';
+import { formatDate } from '../i18n';
 import { useT } from '../i18n/useT';
+
+/** Android reports India's zone by its old name, "Asia/Calcutta"; say it plainly. */
+const INDIA_ZONES = new Set(['Asia/Kolkata', 'Asia/Calcutta']);
 
 /** Shown in their own script, so someone who cannot read English can still find theirs. */
 const LANGUAGES: { value: string | null; label: string }[] = [
@@ -26,7 +32,8 @@ export default function SettingsScreen() {
   const c = useTheme();
   const { user, isLocal, setWantsSignIn, cache, signOut, refresh, syncing, prefs, updatePrefs } =
     useApp();
-  const { t } = useT();
+  const { t, locale } = useT();
+  const zone = user?.timezone ?? 'Asia/Kolkata';
 
   const [queued, setQueued] = useState(0);
 
@@ -51,7 +58,7 @@ export default function SettingsScreen() {
       style={[sharedStyles.screen, { backgroundColor: c.bg }]}
       contentContainerStyle={sharedStyles.content}
     >
-      <ScreenHeader eyebrow={user?.email} title={t('settings_title')} />
+      <ScreenHeader title={t('settings_title')} />
 
       <View style={sharedStyles.stack}>
         {isLocal ? (
@@ -69,7 +76,8 @@ export default function SettingsScreen() {
             <PanelHead label={t('account')} />
             <View>
               <ListRow title={user?.name ?? '—'} subtitle={t('name')} />
-              <ListRow title={user?.timezone ?? '—'} subtitle={t('timezone')} last />
+              <ListRow title={user?.email ?? '—'} subtitle={t('email')} />
+              <ListRow title={INDIA_ZONES.has(zone) ? t('india_time') : zone} subtitle={t('timezone')} last />
             </View>
           </Panel>
         )}
@@ -134,7 +142,9 @@ export default function SettingsScreen() {
               <View style={sharedStyles.rowBetween}>
                 <Text style={[type.sm, { color: c.text2 }]}>{t('last_synced')}</Text>
                 <Text style={[type.xs, { color: c.text }]}>
-                  {cache.syncedAt ? new Date(cache.syncedAt).toLocaleString() : t('never')}
+                  {cache.syncedAt
+                    ? `${formatDate(locale, toLocalDate(cache.syncedAt, zone), 'short')}, ${formatTimeFor(toLocalTime(cache.syncedAt, zone), locale)}`
+                    : t('never')}
                 </Text>
               </View>
               <View style={[sharedStyles.rowBetween, { marginTop: spacing.md }]}>
@@ -163,11 +173,11 @@ export default function SettingsScreen() {
           <View>
             <ListRow
               title={t('medical_disclaimer')}
-              onPress={() => void Linking.openURL('https://medtrack.app/medical-disclaimer')}
+              onPress={() => void Linking.openURL(`${WEB_URL}/medical-disclaimer`)}
             />
             <ListRow
               title={t('privacy_policy')}
-              onPress={() => void Linking.openURL('https://medtrack.app/privacy')}
+              onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
               last
             />
           </View>

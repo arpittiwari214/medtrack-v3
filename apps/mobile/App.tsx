@@ -12,7 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppProvider, useApp } from './src/context/AppContext';
 import { recordDelivery } from './src/notifications/health';
@@ -31,6 +31,9 @@ const Tab = createBottomTabNavigator();
 function Tabs() {
   const c = useTheme();
   const { t } = useT();
+  // Android draws the app behind the system bars, so the tab bar has to clear
+  // the gesture strip or the three nav buttons itself.
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -41,9 +44,9 @@ function Tabs() {
         tabBarStyle: {
           backgroundColor: c.surface,
           borderTopColor: c.border,
-          height: 62,
+          height: 62 + insets.bottom,
           paddingTop: 6,
-          paddingBottom: 8,
+          paddingBottom: 8 + insets.bottom,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
@@ -138,7 +141,14 @@ function Root() {
     );
   }
 
-  return user && !wantsSignIn ? <Tabs /> : <SignInScreen />;
+  // The tab bar clears the nav buttons itself; the sign-in screen needs it done for it.
+  return user && !wantsSignIn ? (
+    <Tabs />
+  ) : (
+    <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
+      <SignInScreen />
+    </SafeAreaView>
+  );
 }
 
 export default function App() {
@@ -164,7 +174,10 @@ export default function App() {
       <NavigationContainer theme={navigationTheme}>
         <AppProvider>
           <StatusBar style="auto" />
-          <Root />
+          {/* Keeps every screen's heading below the clock and battery icons. */}
+          <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: palette.bg }}>
+            <Root />
+          </SafeAreaView>
         </AppProvider>
       </NavigationContainer>
     </SafeAreaProvider>

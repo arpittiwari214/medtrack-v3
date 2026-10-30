@@ -11,9 +11,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { formatTimeFor, type Appointment, type AppointmentKind, type Locale } from '@medtrack/shared';
 import { useApp } from '../context/AppContext';
+import { WEB_URL } from '../config';
 import { TABULAR, radius, spacing, type, useTheme } from '../theme';
 import {
   ActionSecondary,
@@ -135,6 +136,13 @@ export default function AppointmentsScreen() {
           icon={(colour) => <Calendar size={22} color={colour} />}
           title={t(scope === 'upcoming' ? 'visits_empty_up' : 'visits_empty_past')}
           description={t('visits_empty_body')}
+          // Adding happens on the website; without this the screen was a dead end.
+          action={
+            <ActionSecondary
+              label={t('open_website')}
+              onPress={() => void Linking.openURL(`${WEB_URL}/app/appointments`)}
+            />
+          }
         />
       ) : (
         <View style={sharedStyles.stack}>

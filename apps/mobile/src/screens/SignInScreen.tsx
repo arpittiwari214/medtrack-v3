@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { ApiError, OfflineError } from '../api/client';
 import { useApp } from '../context/AppContext';
+import { WEB_URL } from '../config';
 import { MIN_TOUCH, radius, spacing, type, useTheme } from '../theme';
 import { ActionSecondary, Banner } from '../components/ui';
 import { AlertTriangle, Info, Pill } from '../components/icons';
@@ -138,6 +140,13 @@ export default function SignInScreen() {
             onSubmitEditing={submit}
             returnKeyType="go"
           />
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => void Linking.openURL(`${WEB_URL}/forgot-password`)}
+            style={{ minHeight: MIN_TOUCH, justifyContent: 'center', alignSelf: 'flex-end', paddingHorizontal: spacing.sm }}
+          >
+            <Text style={[type.sm, { color: c.brand, fontWeight: '600' }]}>{t('forgot_password')}</Text>
+          </Pressable>
         </View>
 
         {/* The deeper brand step, not --brand: white on the lighter step is
@@ -177,9 +186,15 @@ export default function SignInScreen() {
         {/* Account creation deliberately lives on the web. Signup needs the
             consent flow and the legal documents, and reproducing those in a
             native screen invites the two drifting apart. */}
-        <Text style={[type.xs, { color: c.text3, textAlign: 'center', marginTop: spacing.md }]}>
-          {t('new_account_note')}
-        </Text>
+        <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
+          <ActionSecondary
+            label={t('create_account')}
+            onPress={() => void Linking.openURL(`${WEB_URL}/signup`)}
+          />
+          <Text style={[type.xs, { color: c.text2, textAlign: 'center', lineHeight: 18 }]}>
+            {t('new_account_note', { site: WEB_URL.split('//').pop() ?? WEB_URL })}
+          </Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

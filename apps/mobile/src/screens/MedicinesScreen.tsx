@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
+  colorLabel,
   dosesRemainingInStock,
   formatTimeFor,
   isLowStock,
   slotNotation,
   type Medicine,
 } from '@medtrack/shared';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { MIN_TOUCH, TABULAR, radius, spacing, type, useTheme } from '../theme';
 import { Badge, Banner, EmptyState, Panel, PanelBody, PanelHead, ScreenHeader, sharedStyles } from '../components/ui';
@@ -82,19 +84,35 @@ export default function MedicinesScreen() {
                     <View style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'center' }}>
                       <MedicinePhoto uri={photos[medicine.id]} color={medicine.pillColor} size={84} />
                       <View style={{ flex: 1, gap: 4 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                          <ColorDot color={medicine.pillColor} size={14} />
-                          <ColorDot color={medicine.stripColor} size={14} />
-                          <Text style={[type.lg, { color: c.text, flexShrink: 1 }]} numberOfLines={2}>
-                            {medicine.person ? `${medicine.person}: ` : ''}
-                            {medicine.name}
-                          </Text>
-                        </View>
+                        <Text style={[type.lg, { color: c.text }]} numberOfLines={2}>
+                          {medicine.person ? `${medicine.person}: ` : ''}
+                          {medicine.name}
+                        </Text>
                         <Text style={[type.sm, { color: c.text2 }]}>
                           {[medicine.strength, medicine.purpose && t('for_purpose', { purpose: medicine.purpose })]
                             .filter(Boolean)
                             .join(' · ')}
                         </Text>
+                        {/* Each colour with its word: a bare red dot here read
+                            as "missed", which is what red means on Today. */}
+                        {(medicine.pillColor || medicine.stripColor) && (
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm }}>
+                            {medicine.pillColor && (
+                              <>
+                                <ColorDot color={medicine.pillColor} />
+                                <Text style={[type.xs, { color: c.text2 }]}>{colorLabel(medicine.pillColor, locale)}</Text>
+                              </>
+                            )}
+                            {medicine.stripColor && (
+                              <>
+                                <ColorDot color={medicine.stripColor} />
+                                <Text style={[type.xs, { color: c.text2 }]}>
+                                  {t('strip_of_colour', { colour: colorLabel(medicine.stripColor, locale) })}
+                                </Text>
+                              </>
+                            )}
+                          </View>
+                        )}
                       </View>
                     </View>
 
@@ -134,7 +152,12 @@ export default function MedicinesScreen() {
       </ScrollView>
 
       <Modal visible={adding} animationType="slide" onRequestClose={() => setAdding(false)}>
-        <AddMedicineScreen onDone={() => setAdding(false)} />
+        {/* A modal is its own window, so it needs its own safe-area measure. */}
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
+            <AddMedicineScreen onDone={() => setAdding(false)} />
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </>
   );

@@ -71,7 +71,7 @@ export const en = {
   runs_out_around: 'runs out around {date}',
   buy_more: 'Buy more',
   no_visit: 'No visit booked',
-  no_visit_body: 'Add your next check-up and we will remind you the day before.',
+  no_visit_body: 'Add your next check-up on the website and this phone will remind you.',
   fasting: 'fasting',
 
   // Medicines
@@ -106,6 +106,7 @@ export const en = {
   step_look: '2 · How does it look?',
   tablet_colour: 'Tablet colour',
   strip_colour: 'Strip colour',
+  strip_of_colour: '{colour} strip',
   step_purpose: '3 · What is it for?',
   purpose_placeholder: 'BP, sugar, thyroid…',
   name_optional: 'Name on the strip (optional)',
@@ -176,6 +177,7 @@ export const en = {
   account: 'Account',
   name: 'Name',
   timezone: 'Timezone',
+  india_time: 'India (IST)',
   voice: 'Voice',
   speak_on_open: 'Read reminders aloud when I open them',
   speak_on_open_help: 'Plays your voice note, or reads the medicine out. Others nearby will hear what it is for.',
@@ -221,7 +223,9 @@ export const en = {
   sign_in: 'Sign in',
   sign_in_offline: 'No connection. You need to be online to sign in the first time.',
   sign_in_failed: 'Something went wrong.',
-  new_account_note: 'New to MedTrack? Create your account at medtrack.app, then sign in here.',
+  forgot_password: 'Forgot password?',
+  create_account: 'Create a new account',
+  new_account_note: 'Both open the MedTrack website ({site}). Come back here to sign in.',
 
   // Insights
   insights_title: 'Insights',
@@ -240,6 +244,7 @@ export const en = {
   flat_tick: 'A flat tick marks a day with no doses scheduled — not a day you missed.',
   by_medicine: 'By medicine',
   taken_missed: '{taken} taken · {missed} missed',
+  skipped_suffix: ' · {n} skipped',
 
   // Appointments
   visits_eyebrow: 'Visits and lab tests',
@@ -253,6 +258,7 @@ export const en = {
   kind_other: 'Appointment',
   visits_empty_up: 'Nothing coming up',
   visits_empty_past: 'Nothing in the past',
+  open_website: 'Open the website',
   visits_empty_body:
     'Add a doctor visit or lab test on the web app. Reminders arrive here the day before and an hour ahead.',
   with_provider: 'With {provider}',
@@ -346,7 +352,7 @@ export const hi: Record<StringKey, string> = {
   runs_out_around: 'लगभग {date} तक चलेगी',
   buy_more: 'और ख़रीदें',
   no_visit: 'कोई विज़िट तय नहीं',
-  no_visit_body: 'अगली जाँच जोड़ें — हम एक दिन पहले याद दिलाएँगे।',
+  no_visit_body: 'अगली जाँच वेबसाइट पर जोड़ें — यह फ़ोन आपको याद दिलाएगा।',
   fasting: 'खाली पेट',
 
   medicines_title: 'दवाइयाँ',
@@ -379,6 +385,7 @@ export const hi: Record<StringKey, string> = {
   step_look: '2 · यह कैसी दिखती है?',
   tablet_colour: 'गोली का रंग',
   strip_colour: 'पत्ते का रंग',
+  strip_of_colour: '{colour} पत्ता',
   step_purpose: '3 · यह किसलिए है?',
   purpose_placeholder: 'BP, शुगर, थायराइड…',
   name_optional: 'पत्ते पर लिखा नाम (ज़रूरी नहीं)',
@@ -447,6 +454,7 @@ export const hi: Record<StringKey, string> = {
   account: 'खाता',
   name: 'नाम',
   timezone: 'समय क्षेत्र',
+  india_time: 'भारत (IST)',
   voice: 'आवाज़',
   speak_on_open: 'रिमाइंडर खोलने पर बोलकर सुनाएँ',
   speak_on_open_help: 'आपका आवाज़ वाला नोट चलेगा, या दवा का नाम बोला जाएगा। पास बैठे लोग सुन सकेंगे कि दवा किसलिए है।',
@@ -491,7 +499,9 @@ export const hi: Record<StringKey, string> = {
   sign_in: 'साइन इन',
   sign_in_offline: 'इंटरनेट नहीं है। पहली बार साइन इन करने के लिए इंटरनेट चाहिए।',
   sign_in_failed: 'कुछ गड़बड़ हो गई।',
-  new_account_note: 'MedTrack पर नए हैं? medtrack.app पर खाता बनाएँ, फिर यहाँ साइन इन करें।',
+  forgot_password: 'पासवर्ड भूल गए?',
+  create_account: 'नया खाता बनाएँ',
+  new_account_note: 'दोनों MedTrack की वेबसाइट ({site}) पर खुलते हैं। साइन इन करने के लिए यहाँ वापस आएँ।',
 
   insights_title: 'प्रगति',
   last_days: 'पिछले {n} दिन',
@@ -509,6 +519,7 @@ export const hi: Record<StringKey, string> = {
   flat_tick: 'सपाट निशान का मतलब उस दिन कोई दवा तय नहीं थी — दवा छूटी नहीं।',
   by_medicine: 'हर दवा का हिसाब',
   taken_missed: '{taken} ली · {missed} छूटी',
+  skipped_suffix: ' · {n} छोड़ी',
 
   visits_eyebrow: 'डॉक्टर और जाँच',
   appointments_title: 'विज़िट',
@@ -521,6 +532,7 @@ export const hi: Record<StringKey, string> = {
   kind_other: 'विज़िट',
   visits_empty_up: 'कोई आने वाली विज़िट नहीं',
   visits_empty_past: 'कोई पिछली विज़िट नहीं',
+  open_website: 'वेबसाइट खोलें',
   visits_empty_body: 'वेबसाइट पर डॉक्टर विज़िट या लैब जाँच जोड़ें। एक दिन पहले और एक घंटा पहले यहाँ याद दिलाया जाएगा।',
   with_provider: '{provider} के साथ',
   fasting_required: 'खाली पेट जाना है — पहले कुछ न खाएँ।',

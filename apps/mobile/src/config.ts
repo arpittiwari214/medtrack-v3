@@ -7,7 +7,10 @@ import { pickApiUrl } from './api-url';
  * The API URL comes from `app.json`'s `extra` block so it can be changed per
  * build profile without touching code.
  */
-const extra = (Constants.expoConfig?.extra ?? {}) as { apiUrl?: string };
+const extra = (Constants.expoConfig?.extra ?? {}) as { apiUrl?: string; webUrl?: string };
+
+/** The website: signup, the legal pages, and adding visits. */
+export const WEB_URL: string = extra.webUrl ?? 'https://medtrack-v3.vercel.app';
 
 export const API_URL: string = pickApiUrl({
   configured: extra.apiUrl,

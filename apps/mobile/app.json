@@ -54,6 +54,7 @@
     ],
     "extra": {
       "apiUrl": "http://localhost:5000/api",
+      "webUrl": "https://medtrack-v3.vercel.app",
       "eas": {
         "projectId": "583627ed-cf3f-4b1b-bae5-f42e26b39cc9"
       }

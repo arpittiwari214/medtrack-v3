@@ -143,6 +143,9 @@ export default function Analytics() {
             <div className="panel-body stack">
               {data.perMedicine.map((medicine) => {
                 const level = band(medicine.ratePercent);
+                // Only skipped doses so far: there is no rate to judge, and
+                // "Needs attention 0%" would be wrong.
+                const counted = medicine.taken + medicine.missed > 0;
                 return (
                   <div key={medicine.medicineId}>
                     <div className="row-between mb-3">
@@ -150,9 +153,9 @@ export default function Analytics() {
                         {medicine.medicineName}
                       </span>
                       <span className="row" style={{ gap: 'var(--s2)' }}>
-                        <span className={`badge ${level.badge}`}>{t(level.label)}</span>
+                        {counted && <span className={`badge ${level.badge}`}>{t(level.label)}</span>}
                         <span className="numeric t-sm" style={{ fontWeight: 650 }}>
-                          {medicine.ratePercent}%
+                          {counted ? `${medicine.ratePercent}%` : '—'}
                         </span>
                       </span>
                     </div>
@@ -170,6 +173,7 @@ export default function Analytics() {
                     </div>
                     <p className="subtle mt-2">
                       {t('taken_missed', { taken: medicine.taken, missed: medicine.missed })}
+                      {medicine.skipped > 0 ? t('skipped_suffix', { n: medicine.skipped }) : ''}
                     </p>
                   </div>
                 );

@@ -190,6 +190,9 @@ export default function InsightsScreen() {
               <View style={{ gap: spacing.lg }}>
                 {perMedicine.map((medicine) => {
                   const level = band(medicine.ratePercent);
+                  // Only skipped doses so far: there is no rate to judge, and
+                  // "Needs attention 0%" would be wrong.
+                  const counted = medicine.taken + medicine.missed > 0;
                   return (
                     <View key={medicine.medicineId}>
                       <View style={[sharedStyles.rowBetween, { marginBottom: spacing.sm }]}>
@@ -200,11 +203,11 @@ export default function InsightsScreen() {
                           {medicine.medicineName}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                          <Badge label={t(level.label)} tone={level.tone} />
+                          {counted && <Badge label={t(level.label)} tone={level.tone} />}
                           <Text
                             style={[type.sm, TABULAR, { color: c.text, fontWeight: '700' }]}
                           >
-                            {medicine.ratePercent}%
+                            {counted ? `${medicine.ratePercent}%` : '—'}
                           </Text>
                         </View>
                       </View>
@@ -238,6 +241,7 @@ export default function InsightsScreen() {
 
                       <Text style={[type.xs, { color: c.text3, marginTop: 4 }]}>
                         {t('taken_missed', { taken: medicine.taken, missed: medicine.missed })}
+                        {medicine.skipped > 0 ? t('skipped_suffix', { n: medicine.skipped }) : ''}
                       </Text>
                     </View>
                   );

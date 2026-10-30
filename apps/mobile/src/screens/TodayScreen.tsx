@@ -26,6 +26,7 @@ import {
   type Medicine,
 } from '@medtrack/shared';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { SNOOZE_OPTIONS } from '../config';
 import { MIN_TOUCH, TABULAR, radius, spacing, type, useTheme } from '../theme';
@@ -117,7 +118,6 @@ export default function TodayScreen() {
   }, [announceDoseId]);
 
   const total = ordered.length;
-  const done = taken.length + missed.length + skipped.length;
   const firstName = user?.name?.split(' ')[0] ?? '';
 
   return (
@@ -188,8 +188,12 @@ export default function TodayScreen() {
               <View style={[sharedStyles.row, { marginTop: spacing.sm }]}>
                 <Micro>{t('today_label')}</Micro>
                 <DaySegments statuses={ordered.map((d) => d.status)} />
-                <Text style={[type.xs, TABULAR, { color: c.text2, fontWeight: '700' }]}>
-                  {done}/{total}
+                {/* Taken, not "dealt with": four missed doses once read as 4/5. */}
+                <Text
+                  accessibilityLabel={t('today_done_body', { taken: taken.length, total })}
+                  style={[type.xs, TABULAR, { color: c.text2, fontWeight: '700' }]}
+                >
+                  {taken.length}/{total}
                 </Text>
               </View>
 
@@ -237,60 +241,64 @@ export default function TodayScreen() {
         animationType="slide"
         onRequestClose={() => setSnoozeTarget(null)}
       >
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(12,18,21,0.55)', justifyContent: 'flex-end' }}
-          onPress={() => setSnoozeTarget(null)}
-        >
+        <SafeAreaProvider>
           <Pressable
-            style={{
-              backgroundColor: c.surface,
-              borderTopLeftRadius: radius.lg,
-              borderTopRightRadius: radius.lg,
-              padding: spacing.xl,
-              gap: spacing.md,
-            }}
-            onPress={(event) => event.stopPropagation()}
+            style={{ flex: 1, backgroundColor: 'rgba(12,18,21,0.55)', justifyContent: 'flex-end' }}
+            onPress={() => setSnoozeTarget(null)}
           >
-            <Text style={[type.lg, { color: c.text }]}>{t('snooze_title')}</Text>
-            <Text style={[type.sm, { color: c.text2, marginBottom: spacing.sm }]}>
-              {t('snooze_body')}
-            </Text>
-
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              {SNOOZE_OPTIONS.map((minutes) => (
-                <Pressable
-                  key={minutes}
-                  onPress={() => {
-                    if (snoozeTarget) void actOnDose(snoozeTarget.id, 'snooze', minutes);
-                    setSnoozeTarget(null);
-                  }}
-                  style={({ pressed }) => ({
-                    flexGrow: 1,
-                    flexBasis: '45%',
-                    minHeight: 52,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: radius.sm,
-                    borderWidth: 1,
-                    borderColor: c.borderStrong,
-                    backgroundColor: pressed ? c.surface2 : c.surface,
-                  })}
-                >
-                  <Text style={[type.base, TABULAR, { color: c.text, fontWeight: '700' }]}>
-                    {t('minutes', { n: minutes })}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
             <Pressable
-              onPress={() => setSnoozeTarget(null)}
-              style={{ minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' }}
+              style={{
+                backgroundColor: c.surface,
+                borderTopLeftRadius: radius.lg,
+                borderTopRightRadius: radius.lg,
+                padding: spacing.xl,
+                gap: spacing.md,
+              }}
+              onPress={(event) => event.stopPropagation()}
             >
-              <Text style={[type.sm, { color: c.text2 }]}>{t('cancel')}</Text>
+              <Text style={[type.lg, { color: c.text }]}>{t('snooze_title')}</Text>
+              <Text style={[type.sm, { color: c.text2, marginBottom: spacing.sm }]}>
+                {t('snooze_body')}
+              </Text>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                {SNOOZE_OPTIONS.map((minutes) => (
+                  <Pressable
+                    key={minutes}
+                    onPress={() => {
+                      if (snoozeTarget) void actOnDose(snoozeTarget.id, 'snooze', minutes);
+                      setSnoozeTarget(null);
+                    }}
+                    style={({ pressed }) => ({
+                      flexGrow: 1,
+                      flexBasis: '45%',
+                      minHeight: 52,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: radius.sm,
+                      borderWidth: 1,
+                      borderColor: c.borderStrong,
+                      backgroundColor: pressed ? c.surface2 : c.surface,
+                    })}
+                  >
+                    <Text style={[type.base, TABULAR, { color: c.text, fontWeight: '700' }]}>
+                      {t('minutes', { n: minutes })}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Pressable
+                onPress={() => setSnoozeTarget(null)}
+                style={{ minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={[type.sm, { color: c.text2 }]}>{t('cancel')}</Text>
+              </Pressable>
+              {/* Room for the phone's own nav buttons below the sheet. */}
+              <SafeAreaView edges={['bottom']} />
             </Pressable>
           </Pressable>
-        </Pressable>
+        </SafeAreaProvider>
       </Modal>
     </>
   );
