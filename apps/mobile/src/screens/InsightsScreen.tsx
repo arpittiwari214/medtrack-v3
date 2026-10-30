@@ -338,7 +338,8 @@ function AdherenceChart({
                   <View
                     style={{
                       height: Math.max((point.ratePercent / 100) * CHART_HEIGHT, 3),
-                      backgroundColor: c.brand,
+                      // Every dose missed: red, or the 3px stub reads as "nothing due".
+                      backgroundColor: point.ratePercent === 0 ? c.danger : c.brand,
                       borderTopLeftRadius: 3,
                       borderTopRightRadius: 3,
                     }}

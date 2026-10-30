@@ -238,7 +238,10 @@ function AdherenceChart({
               {point.ratePercent === null ? (
                 <div className="chart-bar-empty" />
               ) : (
-                <div className="chart-bar" style={{ height: `${Math.max(point.ratePercent, 2)}%` }} />
+                <div
+                  className={`chart-bar${point.ratePercent === 0 ? ' chart-bar-missed' : ''}`}
+                  style={{ height: `${Math.max(point.ratePercent, 2)}%` }}
+                />
               )}
             </div>
           ))}

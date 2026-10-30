@@ -1107,6 +1107,11 @@ a:hover {
   transition: opacity 0.12s ease;
 }
 
+/* Every dose missed: red, or the 3px stub reads as "nothing due". */
+.chart-bar-missed {
+  background: var(--danger);
+}
+
 .chart-col:hover .chart-bar {
   opacity: 0.75;
 }

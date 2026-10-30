@@ -110,6 +110,7 @@ export default function Today() {
       upcoming: data.upcoming.filter((d) => d.id !== dose.id),
       missed: data.missed.filter((d) => d.id !== dose.id),
       taken: action === 'take' ? [...data.taken, { ...dose, status: 'taken' }] : data.taken,
+      skipped: action === 'skip' ? [...data.skipped, { ...dose, status: 'skipped' }] : data.skipped,
     });
 
     try {
@@ -267,6 +268,15 @@ function NextDose({
   // A scheduled dose already past its time is not "next" — it is due now.
   const pastDue = !overdue && new Date(dose.scheduledAt).getTime() < Date.now();
 
+  // Asked first, as on the phone: one stray click recorded a deliberate skip.
+  const confirmSkip = () => {
+    const name = medicine ? describeMedicine(medicine, locale) : dose.medicineName;
+    const body = t('skip_confirm_body', { name, time: formatTimeFor(dose.localTime, locale) });
+    if (window.confirm(`${t('skip_confirm')}
+
+${body}`)) onSkip();
+  };
+
   return (
     <section className={`panel${dose.isCritical ? ' panel-critical' : ''}`}>
       <div className="panel-head">
@@ -308,7 +318,7 @@ function NextDose({
             <Clock size={16} />
             {t('snooze')}
           </button>
-          <button type="button" className="action-secondary" onClick={onSkip}>
+          <button type="button" className="action-secondary" onClick={confirmSkip}>
             <SkipForward size={16} />
             {t('skip')}
           </button>
